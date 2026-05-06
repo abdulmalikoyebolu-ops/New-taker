@@ -98,15 +98,12 @@ client.on('message', async function(message) {
       conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
     }
 
-    var model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: SYSTEM_PROMPT
-    });
+    var model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    var history = conversations[chatId].slice(0, -1);
-    var chat = model.startChat({ history: history });
-    var last = conversations[chatId][conversations[chatId].length - 1];
-    var result = await chat.sendMessage(last.parts);
+    var result = await model.generateContent({
+      systemInstruction: SYSTEM_PROMPT,
+      contents: conversations[chatId]
+    });
     var reply = result.response.text();
 
     conversations[chatId].push({ role: 'model', parts: [{ text: reply }] });
