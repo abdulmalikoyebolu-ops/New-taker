@@ -6,7 +6,7 @@ var http = require('http');
 var GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
 
 var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally.';
+var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally. You can understand and reply in any language the user writes in, including Yoruba, Hausa, Igbo, Pidgin English, French, Arabic, and any other language. Always reply in the same language the user is writing in.';
 var MAX_HISTORY = 20;
 var latestQR = null;
 var isConnected = false;
@@ -72,7 +72,6 @@ client.on('message', async function(message) {
       var text = message.body ? message.body.trim() : '';
       if (!text) return;
 
-      // Commands
       if (text === '/clear') {
         conversations[chatId] = [];
         await message.reply('Memory cleared! Fresh start 🧹');
@@ -93,17 +92,19 @@ client.on('message', async function(message) {
       return;
     }
 
-    // Trim history
     if (conversations[chatId].length > MAX_HISTORY) {
       conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
     }
 
-    var model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-    var result = await model.generateContent({
-      systemInstruction: SYSTEM_PROMPT,
-      contents: conversations[chatId]
+    var model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      systemInstruction: SYSTEM_PROMPT
     });
+
+    var history = conversations[chatId].slice(0, -1);
+    var chat = model.startChat({ history: history });
+    var last = conversations[chatId][conversations[chatId].length - 1];
+    var result = await chat.sendMessage(last.parts[0].text);
     var reply = result.response.text();
 
     conversations[chatId].push({ role: 'model', parts: [{ text: reply }] });
@@ -111,12 +112,13 @@ client.on('message', async function(message) {
 
   } catch (e) {
     console.error('Message error:', e.message);
-    if (conversations[chatId].length > 0) { conversations[chatId].pop(); }
+    if (conversations[chatId].length > 0) {
+      conversations[chatId].pop();
+    }
     await message.reply('Something went wrong, try again! 😅');
   }
 });
 
-// ── Web server to show QR ──
 var server = http.createServer(function(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/html' });
 
