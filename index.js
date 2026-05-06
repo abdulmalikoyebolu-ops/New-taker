@@ -120,9 +120,8 @@ client.on('message', async function(message) {
         await message.reply('Could not load that image 😅');
         return;
       }
-      var reply = await askGroqVision(media.data, media.mimetype);
-      await message.reply(reply);
-      return;
+      var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
+var reply = await askGroqVision(media.data, mimeOverride);
     }
 
     if (message.type === 'chat') {
