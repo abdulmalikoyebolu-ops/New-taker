@@ -1,0 +1,2 @@
+[variables]
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
