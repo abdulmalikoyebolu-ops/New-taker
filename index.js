@@ -3,16 +3,14 @@ var Client = require('whatsapp-web.js').Client;
 var LocalAuth = require('whatsapp-web.js').LocalAuth;
 var QRCode = require('qrcode');
 var http = require('http');
-var GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
 
-var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+var GROQ_API_KEY = process.env.GROQ_API_KEY;
 var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally. You can understand and reply in any language the user writes in, including Yoruba, Hausa, Igbo, Pidgin English, French, Arabic, and any other language. Always reply in the same language the user is writing in.';
 var MAX_HISTORY = 20;
 var latestQR = null;
 var isConnected = false;
 var startupError = null;
 
-var genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 var conversations = {};
 
 var client = new Client({
@@ -62,6 +60,25 @@ client.on('auth_failure', function(msg) {
   startupError = msg;
 });
 
+async function askGroq(messages) {
+  var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + GROQ_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama3-8b-8192',
+      messages: messages,
+      max_tokens: 500,
+      temperature: 0.7
+    })
+  });
+  var data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || 'Groq API error');
+  return data.choices[0].message.content;
+}
+
 client.on('message', async function(message) {
   if (message.isStatus || message.fromMe) return;
   var chatId = message.from;
@@ -83,7 +100,7 @@ client.on('message', async function(message) {
         return;
       }
 
-      conversations[chatId].push({ role: 'user', parts: [{ text: text }] });
+      conversations[chatId].push({ role: 'user', content: text });
 
     } else if (message.type === 'ptt' || message.type === 'audio') {
       await message.reply('I cannot process voice messages yet — please type instead! 🎤');
@@ -96,18 +113,10 @@ client.on('message', async function(message) {
       conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
     }
 
-    var model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: SYSTEM_PROMPT
-    });
+    var messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[chatId]];
+    var reply = await askGroq(messages);
 
-    var history = conversations[chatId].slice(0, -1);
-    var chat = model.startChat({ history: history });
-    var last = conversations[chatId][conversations[chatId].length - 1];
-    var result = await chat.sendMessage(last.parts[0].text);
-    var reply = result.response.text();
-
-    conversations[chatId].push({ role: 'model', parts: [{ text: reply }] });
+    conversations[chatId].push({ role: 'assistant', content: reply });
     await message.reply(reply);
 
   } catch (e) {
