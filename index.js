@@ -108,22 +108,24 @@ async function askGroqVision(base64Image, mimeType) {
 }
 
 client.on('message', async function(message) {
-  if (message.type === 'image' || message.type === 'sticker') {
+  if (message.isStatus || message.fromMe) return;
+  var chatId = message.from;
+  if (!conversations[chatId]) conversations[chatId] = [];
+
   try {
-    var media = await message.downloadMedia();
-    if (!media) { await message.reply('Could not load that 😅'); return; }
-    var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
-    var reply = await askGroqVision(media.data, mimeOverride);
-    await message.reply(reply);
-  } catch (e) {
-    console.error('Vision error:', e.message);
-    await message.reply('Lol I saw the sticker but my eyes glitched 😅 send again!');
-  }
-  return;
-};
+    // Handle images and stickers
+    if (message.type === 'image' || message.type === 'sticker') {
+      try {
+        var media = await message.downloadMedia();
+        if (!media) { await message.reply('Could not load that 😅'); return; }
+        var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
+        var reply = await askGroqVision(media.data, mimeOverride);
+        await message.reply(reply);
+      } catch (e) {
+        console.error('Vision error:', e.message);
+        await message.reply('Lol I saw the sticker but my eyes glitched 😅 send again!');
       }
-      var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
-var reply = await askGroqVision(media.data, mimeOverride);
+      return;
     }
 
     if (message.type === 'chat') {
