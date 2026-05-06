@@ -112,14 +112,12 @@ client.on('message', async function(message) {
     conversations[chatId].push({ role: 'model', parts: [{ text: reply }] });
     await message.reply(reply);
 
-} catch (e) {
+  } catch (e) {
     console.error('Message error:', e.message);
-    // Remove the failed user message so history stays clean
-    if (conversations[chatId].length > 0) {
-        conversations[chatId].pop();
-    }
+    if (conversations[chatId].length > 0) { conversations[chatId].pop(); }
     await message.reply('Something went wrong, try again! 😅');
-}
+  }
+});
 
 // ── Web server to show QR ──
 var server = http.createServer(function(req, res) {
@@ -170,6 +168,7 @@ var server = http.createServer(function(req, res) {
     </body></html>`);
   }
 });
+
 server.listen(process.env.PORT || 3000, '0.0.0.0', function() {
   console.log('Server running on port', process.env.PORT || 3000);
   console.log('Initializing WhatsApp client...');
