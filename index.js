@@ -6,6 +6,7 @@ var http = require('http');
 
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
 var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally. You can understand and reply in any language the user writes in, including Yoruba, Hausa, Igbo, Pidgin English, French, Arabic, and any other language. Always reply in the same language the user is writing in.';
+var VISION_PROMPT = 'You are a fun, witty WhatsApp assistant. The user just sent you an image or sticker. React to it naturally like a human friend would — be funny, relatable, or thoughtful depending on what you see. Keep it short, casual, no markdown. Use emojis. Reply in the same language the user typically uses.';
 var MAX_HISTORY = 20;
 var latestQR = null;
 var isConnected = false;
@@ -79,12 +80,51 @@ async function askGroq(messages) {
   return data.choices[0].message.content;
 }
 
+async function askGroqVision(base64Image, mimeType) {
+  var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + GROQ_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: VISION_PROMPT },
+            { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64Image } }
+          ]
+        }
+      ],
+      max_tokens: 300,
+      temperature: 0.8
+    })
+  });
+  var data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || 'Groq Vision API error');
+  return data.choices[0].message.content;
+}
+
 client.on('message', async function(message) {
   if (message.isStatus || message.fromMe) return;
   var chatId = message.from;
   if (!conversations[chatId]) conversations[chatId] = [];
 
   try {
+    // Handle images and stickers
+    if (message.type === 'image' || message.type === 'sticker') {
+      var media = await message.downloadMedia();
+      if (!media) {
+        await message.reply('Could not load that image 😅');
+        return;
+      }
+      var reply = await askGroqVision(media.data, media.mimetype);
+      await message.reply(reply);
+      return;
+    }
+
     if (message.type === 'chat') {
       var text = message.body ? message.body.trim() : '';
       if (!text) return;
@@ -121,7 +161,7 @@ client.on('message', async function(message) {
 
   } catch (e) {
     console.error('Message error:', e.message);
-    if (conversations[chatId].length > 0) {
+    if (conversations[chatId] && conversations[chatId].length > 0) {
       conversations[chatId].pop();
     }
     await message.reply('Something went wrong, try again! 😅');
