@@ -220,6 +220,22 @@ var server = http.createServer(function(req, res) {
   }
 });
 
+process.on('unhandledRejection', function(reason, promise) {
+  console.error('Unhandled Rejection:', reason);
+  if (reason && reason.message && reason.message.includes('auth timeout')) {
+    console.log('Auth timeout - reinitializing client...');
+    isConnected = false;
+    latestQR = null;
+    setTimeout(function() {
+      try { client.initialize(); } catch(e) { console.error('Reinit error:', e.message); }
+    }, 5000);
+  }
+});
+
+process.on('uncaughtException', function(err) {
+  console.error('Uncaught Exception:', err.message);
+});
+
 server.listen(process.env.PORT || 3000, '0.0.0.0', function() {
   console.log('Server running on port', process.env.PORT || 3000);
   console.log('Initializing WhatsApp client...');
