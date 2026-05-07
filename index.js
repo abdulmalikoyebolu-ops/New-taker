@@ -146,7 +146,43 @@ client.on('message', async function(message) {
       conversations[chatId].push({ role: 'user', content: text });
 
     } else if (message.type === 'ptt' || message.type === 'audio') {
-      await message.reply('I cannot process voice messages yet — please type instead! 🎤');
+      try {
+        var voiceMedia = await message.downloadMedia();
+        if (!voiceMedia) {
+          await message.reply('Could not load your voice note 😅');
+          return;
+        }
+        var audioBuffer = Buffer.from(voiceMedia.data, 'base64');
+        var { Blob } = require('buffer');
+        var audioBlob = new Blob([audioBuffer], { type: voiceMedia.mimetype || 'audio/ogg' });
+        var formData = new FormData();
+        formData.append('file', audioBlob, 'audio.ogg');
+        formData.append('model', 'whisper-large-v3');
+        formData.append('response_format', 'json');
+        var transcribeRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY },
+          body: formData
+        });
+        var transcribeData = await transcribeRes.json();
+        if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
+        var transcribedText = transcribeData.text;
+        if (!transcribedText || !transcribedText.trim()) {
+          await message.reply('I could not hear anything in that voice note 🎤');
+          return;
+        }
+        conversations[chatId].push({ role: 'user', content: transcribedText });
+        if (conversations[chatId].length > MAX_HISTORY) {
+          conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
+        }
+        var voiceMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[chatId]];
+        var voiceReply = await askGroq(voiceMessages);
+        conversations[chatId].push({ role: 'assistant', content: voiceReply });
+        await message.reply(voiceReply);
+      } catch (e) {
+        console.error('Voice error:', e.message);
+        await message.reply('Could not process your voice note, try again! 😅');
+      }
       return;
     } else {
       return;
