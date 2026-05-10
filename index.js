@@ -7,10 +7,7 @@ var http = require('http');
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 var SYSTEM_PROMPT =
-  'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting. Use emojis occasionally.';
-
-var VISION_PROMPT =
-  'You are a fun WhatsApp assistant. React naturally to images or stickers in a friendly, funny way.';
+  'You are Vektra Chat Bot, a helpful WhatsApp assistant. Be short, friendly, and natural. No markdown.';
 
 var MAX_HISTORY = 10;
 
@@ -18,6 +15,7 @@ var latestQR = null;
 var isConnected = false;
 var conversations = {};
 
+/* ---------------- CLIENT ---------------- */
 var client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
@@ -25,22 +23,23 @@ var client = new Client({
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu'
+      '--disable-dev-shm-usage'
     ],
     headless: true
   }
 });
 
+/* ---------------- EVENTS ---------------- */
 client.on('qr', (qr) => {
   latestQR = qr;
   isConnected = false;
+  console.log('📱 QR RECEIVED');
 });
 
 client.on('ready', () => {
-  latestQR = null;
   isConnected = true;
-  console.log('Bot is online 🚀');
+  latestQR = null;
+  console.log('✅ BOT ONLINE');
 });
 
 client.on('disconnected', () => {
@@ -49,13 +48,10 @@ client.on('disconnected', () => {
   setTimeout(() => client.initialize(), 5000);
 });
 
-/* ---------------- GROQ CHAT ---------------- */
+/* ---------------- SAFE GROQ ---------------- */
 async function askGroq(messages) {
-  var controller = new AbortController();
-  var timeout = setTimeout(() => controller.abort(), 30000);
-
   try {
-    var response = await fetch(
+    const response = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
@@ -68,130 +64,60 @@ async function askGroq(messages) {
           messages,
           max_tokens: 500,
           temperature: 0.7
-        }),
-        signal: controller.signal
+        })
       }
     );
 
-    clearTimeout(timeout);
-
-    // 🔥 FIX 1: check HTTP error BEFORE JSON parsing
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Groq request failed');
+      throw new Error(text || 'Groq error');
     }
 
-    var data = await response.json();
+    const data = await response.json();
 
-    // 🔥 FIX 2: safe structure check
     if (!data.choices?.length) {
-      throw new Error('Empty response from Groq');
+      throw new Error('Empty response');
     }
 
-    return data.choices[0].message?.content || 'No response 😅';
+    return data.choices[0].message?.content || '...';
   } catch (err) {
-    clearTimeout(timeout);
-    throw err;
+    console.error('Groq error:', err.message);
+    return 'I had trouble thinking 😅 try again';
   }
-}
-
-/* ---------------- VISION ---------------- */
-async function askGroqVision(base64Image, mimeType) {
-  var response = await fetch(
-    'https://api.groq.com/openai/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + GROQ_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: VISION_PROMPT },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: 'data:' + mimeType + ';base64,' + base64Image
-                }
-              }
-            ]
-          }
-        ],
-        max_tokens: 300,
-        temperature: 0.8
-      })
-    }
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || 'Vision API failed');
-  }
-
-  var data = await response.json();
-
-  if (!data.choices?.length) {
-    throw new Error('Empty vision response');
-  }
-
-  return data.choices[0].message?.content;
 }
 
 /* ---------------- MESSAGE HANDLER ---------------- */
 client.on('message', async (message) => {
-  if (message.isStatus || message.fromMe) return;
+  if (message.fromMe || message.isStatus) return;
 
-  var chatId = message.from;
+  const chatId = message.from;
 
   if (!conversations[chatId]) {
     conversations[chatId] = [];
   }
 
   try {
-    var chat = await message.getChat();
-
-    // 🔥 FIX 3: only typing (no presence spam)
+    const chat = await message.getChat();
     await chat.sendStateTyping();
 
-    /* ---------------- IMAGE / STICKER ---------------- */
-    if (message.type === 'image' || message.type === 'sticker') {
-      var media = await message.downloadMedia();
-      if (!media) return message.reply('I couldn’t load that 😅');
+    const text = message.body?.trim();
+    if (!text) return;
 
-      var mime = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
-
-      var reply = await askGroqVision(media.data, mime);
-      return message.reply(reply);
+    if (text === '/clear') {
+      conversations[chatId] = [];
+      return message.reply('Memory cleared 🧹');
     }
 
-    /* ---------------- TEXT ---------------- */
-    if (message.type === 'chat') {
-      var text = message.body?.trim();
-      if (!text) return;
+    conversations[chatId].push({ role: 'user', content: text });
 
-      if (text === '/clear') {
-        conversations[chatId] = [];
-        return message.reply('Memory cleared 🧹');
-      }
-
-      conversations[chatId].push({ role: 'user', content: text });
-    }
-
-    /* ---------------- MEMORY LIMIT ---------------- */
     if (conversations[chatId].length > MAX_HISTORY) {
       conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
     }
 
-    var messages = [
+    const reply = await askGroq([
       { role: 'system', content: SYSTEM_PROMPT },
       ...conversations[chatId]
-    ];
-
-    var reply = await askGroq(messages);
+    ]);
 
     conversations[chatId].push({
       role: 'assistant',
@@ -199,33 +125,59 @@ client.on('message', async (message) => {
     });
 
     await message.reply(reply);
+
   } catch (err) {
-    console.error('Bot error:', err.message);
-
-    // rollback last message to avoid broken context
-    if (conversations[chatId]?.length) {
-      conversations[chatId].pop();
-    }
-
-    await message.reply('Something went wrong, try again 😅');
+    console.error('Message error:', err.message);
+    await message.reply('Something went wrong 😅 try again');
   }
 });
 
-/* ---------------- CRASH HANDLING ---------------- */
-process.on('unhandledRejection', console.error);
-process.on('uncaughtException', console.error);
-
-/* ---------------- SERVER ---------------- */
+/* ---------------- HTTP SERVER (FIXED QR LOGIC) ---------------- */
 var server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/html' });
 
-  res.end(
-    isConnected
-      ? '<h2>✅ Bot Online</h2>'
-      : '<h2>🔄 Starting Bot...</h2>'
-  );
+  // ✅ Connected page
+  if (isConnected) {
+    return res.end(`
+      <h2>✅ Bot Connected</h2>
+      <p>WhatsApp bot is online</p>
+    `);
+  }
+
+  // ⏳ Waiting page
+  if (!latestQR) {
+    return res.end(`
+      <h2>⏳ Waiting for QR Code...</h2>
+      <p>Please refresh in a few seconds</p>
+      <script>
+        setTimeout(() => location.reload(), 3000);
+      </script>
+    `);
+  }
+
+  // 📱 QR page
+  QRCode.toDataURL(latestQR, (err, url) => {
+    if (err) {
+      return res.end('QR generation failed');
+    }
+
+    res.end(`
+      <html>
+      <body style="background:#111;color:#fff;text-align:center;padding:40px">
+        <h2>Scan QR Code</h2>
+        <img src="${url}" width="280" height="280" />
+        <p>WhatsApp → Linked Devices → Scan</p>
+
+        <script>
+          setTimeout(() => location.reload(), 4000);
+        </script>
+      </body>
+      </html>
+    `);
+  });
 });
 
+/* ---------------- START ---------------- */
 server.listen(process.env.PORT || 3000, () => {
   console.log('Server running...');
   client.initialize();
