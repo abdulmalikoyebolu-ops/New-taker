@@ -4,18 +4,21 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const http = require('http');
 
-const fetch = global.fetch; // Render Node 18+ built-in fetch
+const fetch = global.fetch; // Node 18+ (Render safe)
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+/* =========================
+SYSTEM PROMPT
+========================= */
 const SYSTEM_PROMPT = `
-You are Vektra Chat Bot, a conversational WhatsApp AI assistant.
+You are Vektra Chat Bot, a friendly WhatsApp AI assistant.
 
 Owner: Abdulmalik Oyebolu (Vektra Studio)
 
 Rules:
 
-* Be natural and human-like
+* Be natural and conversational
 * Keep replies short and clear
 * Never repeat yourself
 * Never generate recaps unless asked
@@ -25,22 +28,25 @@ Rules:
 * Reply in English unless user uses another language first
   `;
 
-const VISION_PROMPT = `React naturally to the image or sticker like a human friend.
-Be short, casual and expressive.
-Use emojis sometimes.`;
-
+/* =========================
+SETTINGS
+========================= */
 const MAX_HISTORY = 25;
 
 let latestQR = null;
 let isConnected = false;
 
 const conversations = {};
-const processedMessages = new Map();
+const processed = new Map();
 
+/* =========================
+WHATSAPP CLIENT
+========================= */
 const client = new Client({
 authStrategy: new LocalAuth(),
 puppeteer: {
-executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+executablePath:
+process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
 headless: true,
 args: [
 '--no-sandbox',
@@ -51,6 +57,9 @@ args: [
 }
 });
 
+/* =========================
+EVENTS
+========================= */
 client.on('qr', (qr) => {
 latestQR = qr;
 isConnected = false;
@@ -59,7 +68,7 @@ isConnected = false;
 client.on('ready', () => {
 latestQR = null;
 isConnected = true;
-console.log('Bot is ready');
+console.log('Bot ready 🚀');
 });
 
 client.on('disconnected', (reason) => {
@@ -67,20 +76,20 @@ console.log('Disconnected:', reason);
 isConnected = false;
 latestQR = null;
 
+```
 setTimeout(() => client.initialize(), 5000);
+```
+
 });
 
-// CLEAN OLD PROCESSED MESSAGES (prevents memory leak)
-setInterval(() => {
-const now = Date.now();
-for (const [key, time] of processedMessages.entries()) {
-if (now - time > 60000) processedMessages.delete(key);
-}
-}, 60000);
-
+/* =========================
+GROQ REQUEST
+========================= */
 async function askGroq(messages) {
 try {
-const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+const res = await fetch(
+'https://api.groq.com/openai/v1/chat/completions',
+{
 method: 'POST',
 headers: {
 Authorization: `Bearer ${GROQ_API_KEY}`,
@@ -92,91 +101,150 @@ messages,
 temperature: 0.7,
 max_tokens: 500
 })
-});
+}
+);
 
 ```
-const data = await res.json();
-if (!res.ok) throw new Error(data.error?.message || 'Groq error');
+    const data = await res.json();
 
-return data.choices[0].message.content;
-```
+    if (!res.ok) {
+        throw new Error(data.error?.message || 'Groq error');
+    }
 
+    return data.choices[0].message.content;
 } catch (err) {
-console.error('AI ERROR:', err);
-return null;
+    console.error('AI ERROR:', err);
+    return null;
 }
+```
+
 }
 
+/* =========================
+MESSAGE HANDLER
+========================= */
 client.on('message', async (message) => {
 try {
 if (message.fromMe || message.isStatus) return;
 
 ```
-const id = message.id._serialized;
-if (processedMessages.has(id)) return;
+    const id = message.id._serialized;
 
-processedMessages.set(id, Date.now());
+    if (processed.has(id)) return;
+    processed.set(id, Date.now());
 
-const chatId = message.from;
-if (!conversations[chatId]) conversations[chatId] = [];
+    // cleanup old message ids
+    setTimeout(() => processed.delete(id), 60000);
 
-const chat = await message.getChat();
-await client.sendSeen(chatId);
-await chat.sendStateTyping();
+    const chatId = message.from;
 
-let text = (message.body || '').trim();
-if (!text) return;
+    if (!conversations[chatId]) {
+        conversations[chatId] = [];
+    }
 
-// ignore noise messages
-const ignore = ['hmm', 'hm', 'ok', 'okay', 'k', '.', '..', 'lol', '😂'];
-if (ignore.includes(text.toLowerCase())) return;
+    await client.sendSeen(chatId);
 
-// clear memory
-if (text === '/clear') {
-  conversations[chatId] = [];
-  return message.reply('Memory cleared 🧹');
-}
+    const chat = await message.getChat();
+    await chat.sendStateTyping();
 
-// help
-if (text === '/help') {
-  return message.reply('/clear - reset memory\n/help - commands');
-}
+    /* =========================
+       TEXT
+    ========================= */
+    if (message.type === 'chat') {
+        let text = (message.body || '').trim();
+        if (!text) return;
 
-// reply context
-if (message.hasQuotedMsg) {
-  const quoted = await message.getQuotedMessage();
-  if (quoted?.body) {
-    text = `Replying to: "${quoted.body}"\nUser: ${text}`;
-  }
-}
+        // ignore noise
+        const ignore = ['hmm', 'hm', 'ok', 'okay', 'k', '.', '..', 'lol', '😂'];
+        if (ignore.includes(text.toLowerCase())) return;
 
-conversations[chatId].push({ role: 'user', content: text });
+        // commands
+        if (text === '/clear') {
+            conversations[chatId] = [];
+            return message.reply('Memory cleared 🧹');
+        }
 
-if (conversations[chatId].length > MAX_HISTORY) {
-  conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
-}
+        if (text === '/help') {
+            return message.reply('/clear - reset memory\n/help - commands');
+        }
 
-const reply = await askGroq([
-  { role: 'system', content: SYSTEM_PROMPT },
-  ...conversations[chatId]
-]);
+        /* =========================
+           REPLY CONTEXT FIX
+        ========================= */
+        if (message.hasQuotedMsg) {
+            const quoted = await message.getQuotedMessage();
+            if (quoted && quoted.body) {
+                text = `Replying to: "${quoted.body}" | User: ${text}`;
+            }
+        }
 
-if (!reply) {
-  return message.reply('Try again 😅');
-}
+        conversations[chatId].push({
+            role: 'user',
+            content: text
+        });
 
-conversations[chatId].push({ role: 'assistant', content: reply });
+        if (conversations[chatId].length > MAX_HISTORY) {
+            conversations[chatId] =
+                conversations[chatId].slice(-MAX_HISTORY);
+        }
 
-await message.reply(reply);
-```
+        const reply = await askGroq([
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...conversations[chatId]
+        ]);
+
+        if (!reply) {
+            return message.reply('Try again 😅');
+        }
+
+        conversations[chatId].push({
+            role: 'assistant',
+            content: reply
+        });
+
+        return message.reply(reply);
+    }
+
+    /* =========================
+       IMAGE / STICKER
+    ========================= */
+    if (
+        message.type === 'image' ||
+        message.type === 'sticker'
+    ) {
+        const media = await message.downloadMedia();
+
+        if (!media) {
+            return message.reply('Could not read media 😅');
+        }
+
+        const reply = await askGroq([
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+                role: 'user',
+                content: 'User sent an image/sticker. React naturally.'
+            }
+        ]);
+
+        conversations[chatId].push({
+            role: 'assistant',
+            content: reply || 'Nice 👍'
+        });
+
+        return message.reply(reply || 'Nice 👍');
+    }
 
 } catch (err) {
-console.error('MESSAGE ERROR:', err);
-return message.reply('Something went wrong 😅');
+    console.error('BOT ERROR:', err);
+    return message.reply('Something went wrong 😅');
 }
+```
+
 });
 
-// SIMPLE STATUS SERVER (Render requirement)
+/* =========================
+STATUS SERVER (Render)
+========================= */
 const server = http.createServer((req, res) => {
 res.writeHead(200, { 'Content-Type': 'text/plain' });
 res.end(isConnected ? 'Bot Online ✅' : 'Starting...');
