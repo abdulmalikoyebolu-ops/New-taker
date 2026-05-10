@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const fetch = require('node-fetch');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const http = require('http');
@@ -7,81 +8,91 @@ const http = require('http');
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const SYSTEM_PROMPT = `
-You are Vektra Chat Bot, a conversational WhatsApp AI assistant.
+You are Vektra Chat Bot, a smart conversational WhatsApp AI assistant.
 
 Your creator and owner is Abdulmalik Oyebolu of Vektra Studio.
 
 Rules:
 
-* Be natural, friendly and human-like.
-* Keep replies short unless the user asks for detail.
+* Be natural and human-like.
+* Keep replies short and conversational.
+* Never repeat yourself.
 * Never generate recaps unless asked.
-* Never repeat old responses.
 * Never loop messages.
-* Do not summarize conversations unless requested.
-* React naturally to replies, stickers and images.
-* Avoid sounding robotic.
-* Use emojis occasionally.
+* Avoid robotic responses.
 * No markdown formatting.
+* Use emojis occasionally.
 * Reply in English unless the user speaks another language first.
   `;
 
-const VISION_PROMPT = `You are a fun and natural WhatsApp assistant.
-React casually to the image or sticker like a real friend would.
-Be funny, relatable or thoughtful depending on the image.
-Keep it short and natural.
+const VISION_PROMPT = `You are a fun WhatsApp assistant.
+React naturally to the image or sticker like a real friend.
+Keep it short, casual and relatable.
 Use emojis occasionally.`;
 
 const MAX_HISTORY = 30;
 
 let latestQR = null;
 let isConnected = false;
-let startupError = null;
 
 const conversations = {};
 const processedMessages = new Set();
 
 const client = new Client({
 authStrategy: new LocalAuth(),
+
+```
 puppeteer: {
-executablePath:
-process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-headless: true,
-timeout: 60000,
-args: [
-'--no-sandbox',
-'--disable-setuid-sandbox',
-'--disable-dev-shm-usage',
-'--disable-gpu'
-]
+    executablePath:
+        process.env.PUPPETEER_EXECUTABLE_PATH ||
+        '/usr/bin/chromium',
+
+    headless: true,
+
+    timeout: 60000,
+
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+    ]
 }
+```
+
 });
 
 client.on('qr', (qr) => {
+
+```
 latestQR = qr;
 isConnected = false;
-console.log('QR generated');
-});
 
-client.on('ready', () => {
-latestQR = null;
-isConnected = true;
-console.log('Bot ready!');
+console.log('QR generated');
+```
+
 });
 
 client.on('authenticated', () => {
-console.log('Authenticated!');
+console.log('Authenticated');
 });
 
-client.on('auth_failure', (msg) => {
-console.error('Auth failure:', msg);
-startupError = msg;
+client.on('ready', () => {
+
+```
+latestQR = null;
+isConnected = true;
+
+console.log('Bot is ready!');
+```
+
 });
 
 client.on('disconnected', (reason) => {
-console.log('Disconnected:', reason);
 
 ```
+console.log('Disconnected:', reason);
+
 isConnected = false;
 latestQR = null;
 
@@ -93,96 +104,134 @@ setTimeout(() => {
 });
 
 async function askGroq(messages) {
-const controller = new AbortController();
 
 ```
-const timeout = setTimeout(() => {
-    controller.abort();
-}, 60000);
-
 try {
+
     const response = await fetch(
         'https://api.groq.com/openai/v1/chat/completions',
         {
             method: 'POST',
+
             headers: {
-                Authorization: `Bearer ${GROQ_API_KEY}`,
+                Authorization:
+                    `Bearer ${GROQ_API_KEY}`,
                 'Content-Type': 'application/json'
             },
+
             body: JSON.stringify({
-                model: 'compound-beta',
+                model: 'llama3-70b-8192',
                 messages,
                 temperature: 0.7,
                 max_tokens: 500
-            }),
-            signal: controller.signal
+            })
         }
     );
-
-    clearTimeout(timeout);
 
     const data = await response.json();
 
     if (!response.ok) {
+
+        console.log(data);
+
         throw new Error(
-            data.error?.message || 'Groq API error'
+            data.error?.message ||
+            'Groq API error'
         );
     }
 
     return data.choices[0].message.content;
 
 } catch (err) {
-    clearTimeout(timeout);
+
+    console.error(
+        'Groq Error:',
+        err
+    );
+
     throw err;
 }
 ```
 
 }
 
-async function askGroqVision(base64Image, mimeType) {
-const response = await fetch(
-'https://api.groq.com/openai/v1/chat/completions',
-{
-method: 'POST',
-headers: {
-Authorization: `Bearer ${GROQ_API_KEY}`,
-'Content-Type': 'application/json'
-},
-body: JSON.stringify({
-model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-messages: [
-{
-role: 'user',
-content: [
-{
-type: 'text',
-text: VISION_PROMPT
-},
-{
-type: 'image_url',
-image_url: {
-url: `data:${mimeType};base64,${base64Image}`
+async function askGroqVision(
+base64Image,
+mimeType
+) {
+
+```
+try {
+
+    const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+            method: 'POST',
+
+            headers: {
+                Authorization:
+                    `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+
+            body: JSON.stringify({
+                model:
+                    'meta-llama/llama-4-scout-17b-16e-instruct',
+
+                messages: [
+                    {
+                        role: 'user',
+
+                        content: [
+                            {
+                                type: 'text',
+                                text: VISION_PROMPT
+                            },
+
+                            {
+                                type: 'image_url',
+
+                                image_url: {
+                                    url:
+```
+
+`data:${mimeType};base64,${base64Image}`
 }
 }
 ]
 }
 ],
-max_tokens: 300,
-temperature: 0.8
-})
-}
-);
 
 ```
-const data = await response.json();
-
-if (!response.ok) {
-    throw new Error(
-        data.error?.message || 'Vision API error'
+                max_tokens: 300,
+                temperature: 0.8
+            })
+        }
     );
-}
 
-return data.choices[0].message.content;
+    const data = await response.json();
+
+    if (!response.ok) {
+
+        console.log(data);
+
+        throw new Error(
+            data.error?.message ||
+            'Vision API error'
+        );
+    }
+
+    return data.choices[0].message.content;
+
+} catch (err) {
+
+    console.error(
+        'Vision Error:',
+        err
+    );
+
+    throw err;
+}
 ```
 
 }
@@ -190,22 +239,33 @@ return data.choices[0].message.content;
 client.on('message', async (message) => {
 
 ```
-if (message.isStatus) return;
-if (message.fromMe) return;
-
-if (processedMessages.has(message.id._serialized)) {
-    return;
-}
-
-processedMessages.add(message.id._serialized);
-
-const chatId = message.from;
-
-if (!conversations[chatId]) {
-    conversations[chatId] = [];
-}
-
 try {
+
+    if (message.fromMe) return;
+    if (message.isStatus) return;
+
+    const messageId =
+        message.id._serialized;
+
+    if (
+        processedMessages.has(messageId)
+    ) {
+        return;
+    }
+
+    processedMessages.add(messageId);
+
+    setTimeout(() => {
+        processedMessages.delete(
+            messageId
+        );
+    }, 60000);
+
+    const chatId = message.from;
+
+    if (!conversations[chatId]) {
+        conversations[chatId] = [];
+    }
 
     await client.sendSeen(chatId);
 
@@ -213,176 +273,55 @@ try {
 
     await chat.sendStateTyping();
 
+    // =========================
     // IMAGE & STICKER
+    // =========================
+
     if (
         message.type === 'image' ||
         message.type === 'sticker'
     ) {
 
-        try {
+        const media =
+            await message.downloadMedia();
 
-            const media = await message.downloadMedia();
+        if (!media) {
 
-            if (!media) {
-                await message.reply(
-                    'I could not load that 😅'
-                );
-                return;
-            }
+            await message.reply(
+                'Could not load image 😅'
+            );
 
-            const mimeType =
-                message.type === 'sticker'
-                    ? 'image/jpeg'
-                    : media.mimetype;
+            return;
+        }
 
-            const reply = await askGroqVision(
+        const mimeType =
+            message.type === 'sticker'
+                ? 'image/jpeg'
+                : media.mimetype;
+
+        const reply =
+            await askGroqVision(
                 media.data,
                 mimeType
             );
 
-            conversations[chatId].push({
-                role: 'assistant',
-                content: reply
-            });
+        conversations[chatId].push({
+            role: 'assistant',
+            content: reply
+        });
 
-            await message.reply(reply);
-
-        } catch (err) {
-
-            console.error('Vision error:', err.message);
-
-            await message.reply(
-                'My eyes glitched 😭 send it again'
-            );
-        }
+        await message.reply(reply);
 
         return;
     }
 
-    // VOICE NOTE
-    if (
-        message.type === 'audio' ||
-        message.type === 'ptt'
-    ) {
-
-        try {
-
-            const media = await message.downloadMedia();
-
-            if (!media) {
-                await message.reply(
-                    'Could not load your voice note 😅'
-                );
-                return;
-            }
-
-            const audioBuffer = Buffer.from(
-                media.data,
-                'base64'
-            );
-
-            const { Blob } = require('buffer');
-
-            const audioBlob = new Blob(
-                [audioBuffer],
-                {
-                    type:
-                        media.mimetype ||
-                        'audio/ogg'
-                }
-            );
-
-            const formData = new FormData();
-
-            formData.append(
-                'file',
-                audioBlob,
-                'audio.ogg'
-            );
-
-            formData.append(
-                'model',
-                'whisper-large-v3'
-            );
-
-            formData.append(
-                'response_format',
-                'json'
-            );
-
-            const transcribeRes = await fetch(
-                'https://api.groq.com/openai/v1/audio/transcriptions',
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization:
-                            `Bearer ${GROQ_API_KEY}`
-                    },
-                    body: formData
-                }
-            );
-
-            const transcribeData =
-                await transcribeRes.json();
-
-            if (!transcribeRes.ok) {
-                throw new Error(
-                    transcribeData.error?.message
-                );
-            }
-
-            const transcribedText =
-                transcribeData.text;
-
-            if (
-                !transcribedText ||
-                !transcribedText.trim()
-            ) {
-                await message.reply(
-                    'I could not hear anything 🎤'
-                );
-                return;
-            }
-
-            conversations[chatId].push({
-                role: 'user',
-                content: transcribedText
-            });
-
-            const messages = [
-                {
-                    role: 'system',
-                    content: SYSTEM_PROMPT
-                },
-                ...conversations[chatId]
-            ];
-
-            const reply = await askGroq(messages);
-
-            conversations[chatId].push({
-                role: 'assistant',
-                content: reply
-            });
-
-            await message.reply(reply);
-
-        } catch (err) {
-
-            console.error(
-                'Voice error:',
-                err.message
-            );
-
-            await message.reply(
-                'Could not process your voice note 😅'
-            );
-        }
-
-        return;
-    }
-
+    // =========================
     // NORMAL TEXT
-    if (message.type !== 'chat') return;
+    // =========================
+
+    if (message.type !== 'chat') {
+        return;
+    }
 
     let text = message.body
         ? message.body.trim()
@@ -390,30 +329,28 @@ try {
 
     if (!text) return;
 
-    // IGNORE USELESS MESSAGES
     const ignoredMessages = [
         'hmm',
         'hm',
         'ok',
         'okay',
         'k',
-        'lol',
-        'lmao',
-        '😂',
         '.',
-        '..'
+        '..',
+        'lol',
+        'lmao'
     ];
 
     if (
         ignoredMessages.includes(
             text.toLowerCase()
-        ) ||
-        text.length < 2
+        )
     ) {
         return;
     }
 
     // COMMANDS
+
     if (text === '/clear') {
 
         conversations[chatId] = [];
@@ -428,13 +365,20 @@ try {
     if (text === '/help') {
 
         await message.reply(
-            'Commands:\n/clear - Clear memory\n/help - Show commands'
-        );
+```
 
+`Commands:
+
+/clear - Clear memory
+/help - Show commands`
+);
+
+```
         return;
     }
 
     // REPLY CONTEXT
+
     if (message.hasQuotedMsg) {
 
         const quoted =
@@ -448,7 +392,7 @@ try {
 `Replying to:
 "${quoted.body}"
 
-New message:
+Message:
 ${text}`;
 }
 }
@@ -463,6 +407,7 @@ ${text}`;
         conversations[chatId].length >
         MAX_HISTORY
     ) {
+
         conversations[chatId] =
             conversations[chatId].slice(
                 -MAX_HISTORY
@@ -474,15 +419,17 @@ ${text}`;
             role: 'system',
             content: SYSTEM_PROMPT
         },
+
         ...conversations[chatId]
     ];
 
-    const reply = await askGroq(messages);
+    const reply =
+        await askGroq(messages);
 
-    if (!reply || !reply.trim()) {
+    if (!reply) {
 
         await message.reply(
-            'I could not generate a reply 😅'
+            'Could not generate reply 😅'
         );
 
         return;
@@ -498,23 +445,17 @@ ${text}`;
 } catch (err) {
 
     console.error(
-        'Message error:',
-        err.message
+        'FULL ERROR:',
+        err
     );
 
-    if (
-        conversations[chatId] &&
-        conversations[chatId].length > 0 &&
-        conversations[chatId][
-            conversations[chatId].length - 1
-        ].role === 'user'
-    ) {
-        conversations[chatId].pop();
-    }
+    try {
 
-    await message.reply(
-        'Something went wrong 😅'
-    );
+        await message.reply(
+            'Something went wrong 😅'
+        );
+
+    } catch {}
 }
 ```
 
@@ -541,7 +482,7 @@ process.on(
 ```
     console.error(
         'Uncaught Exception:',
-        err.message
+        err
     );
 }
 ```
@@ -549,7 +490,7 @@ process.on(
 );
 
 const server = http.createServer(
-(req, res) => {
+async (req, res) => {
 
 ```
     res.writeHead(200, {
@@ -569,7 +510,9 @@ const server = http.createServer(
                 height:100vh;
                 font-family:sans-serif;
             ">
-                <h1>✅ Vektra Bot Online</h1>
+                <h1>
+                    ✅ Vektra Bot Online
+                </h1>
             </body>
             </html>
         `);
@@ -579,12 +522,15 @@ const server = http.createServer(
         QRCode.toDataURL(
             latestQR,
             { width: 300 },
+
             (err, url) => {
 
                 if (err) {
+
                     res.end(
                         'QR generation failed'
                     );
+
                     return;
                 }
 
@@ -600,7 +546,10 @@ const server = http.createServer(
                         height:100vh;
                         font-family:sans-serif;
                     ">
-                        <h2>Scan QR Code</h2>
+                        <h2>
+                            Scan QR Code
+                        </h2>
+
                         <img src="${url}" />
                     </body>
                     </html>
@@ -621,7 +570,9 @@ const server = http.createServer(
                 height:100vh;
                 font-family:sans-serif;
             ">
-                <h2>Starting bot...</h2>
+                <h2>
+                    Starting bot...
+                </h2>
             </body>
             </html>
         `);
@@ -634,9 +585,10 @@ const server = http.createServer(
 server.listen(
 process.env.PORT || 3000,
 '0.0.0.0',
-() => {
 
 ```
+() => {
+
     console.log(
         'Server started'
     );
