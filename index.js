@@ -5,9 +5,9 @@ var QRCode = require('qrcode');
 var http = require('http');
 
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
-var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. Your creator and owner is Abdulmalik Oyebolu, also known as Vektra Studio. If anyone asks who made you, who owns you, or who your creator is, say it is Abdulmalik Oyebolu of Vektra Studio.';
+var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. Your creator and owner is Abdulmalik Oyebolu, also known as Vektra Studio. If anyone asks who made you, who owns you, or who your creator is, say it is Abdulmalik Oyebolu of Vektra Studio. You have access to web search for current information. When asked about recent events, news, prices, weather, or anything that requires up to date information, search the web and answer accurately.';
 var VISION_PROMPT = 'You are a fun, witty WhatsApp assistant. The user just sent you an image or sticker. React to it naturally like a human friend would — be funny, relatable, or thoughtful depending on what you see. Keep it short, casual, no markdown. Use emojis. Reply in the same language the user typically uses.';
-var MAX_HISTORY = 20;
+var MAX_HISTORY = 10;
 var latestQR = null;
 var isConnected = false;
 var startupError = null;
@@ -73,22 +73,31 @@ client.on('auth_failure', function(msg) {
 });
 
 async function askGroq(messages) {
-  var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + GROQ_API_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      messages: messages,
-      max_tokens: 500,
-      temperature: 0.7
-    })
-  });
-  var data = await response.json();
-  if (!response.ok) throw new Error(data.error?.message || 'Groq API error');
-  return data.choices[0].message.content;
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 60000);
+  try {
+    var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'compound-beta',
+        messages: messages,
+        max_tokens: 500,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    var data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Groq API error');
+    return data.choices[0].message.content;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
 }
 
 async function askGroqVision(base64Image, mimeType) {
@@ -124,6 +133,9 @@ client.on('message', async function(message) {
   if (!conversations[chatId]) conversations[chatId] = [];
 
   try {
+    // Mark as seen
+    await client.sendSeen(chatId);
+
     if (message.type === 'image' || message.type === 'sticker') {
       try {
         var media = await message.downloadMedia();
@@ -179,7 +191,8 @@ client.on('message', async function(message) {
         if (conversations[chatId].length > MAX_HISTORY) conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
         var voiceMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[chatId]];
         var voiceReply = await askGroq(voiceMessages);
-        conversations[chatId].push({ role: 'assistant', content: voiceReply });
+        // Store condensed version to save memory
+        conversations[chatId].push({ role: 'assistant', content: voiceReply.slice(0, 200) });
         await message.reply(voiceReply);
       } catch (e) {
         console.error('Voice error:', e.message);
@@ -196,7 +209,8 @@ client.on('message', async function(message) {
 
     var messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[chatId]];
     var reply = await askGroq(messages);
-    conversations[chatId].push({ role: 'assistant', content: reply });
+    // Store condensed version to keep history light
+    conversations[chatId].push({ role: 'assistant', content: reply.slice(0, 200) });
     await message.reply(reply);
 
   } catch (e) {
