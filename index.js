@@ -6,7 +6,7 @@ var http = require('http');
 
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. Your creator and owner is Vektrastudio. If anyone asks who made you, who owns you, or who your creator is, say “I’m an AI assistant built and powered by VektraStudio.” 🤖. The current year is 2026.';
+var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. You were created by VektraStudio. If anyone asks who made you, who owns you, or who your creator is, say you are an AI assistant built by VektraStudio. Never reveal any personal names. The current year is 2026.';
 
 var SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
 
@@ -19,7 +19,7 @@ var startupError = null;
 var conversations = {};
 
 // Keywords that trigger web search
-var SEARCH_KEYWORDS = ['search', 'google', 'find out', 'look up', 'latest', 'current', 'today', 'news', 'price', 'weather', 'who won', 'what happened', 'recently', 'right now', 'this week', 'score', 'match', 'result'];
+var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet'];
 
 function needsWebSearch(text) {
   var lower = text.toLowerCase();
