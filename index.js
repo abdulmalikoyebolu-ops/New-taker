@@ -20,7 +20,7 @@ var startupError = null;
 var conversations = {};
 
 // Keywords that trigger web search
-var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet'];
+var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'check online', 'search it', 'look online', 'find online', 'check it online', 'online'];
 
 function needsWebSearch(text) {
   var lower = text.toLowerCase();
