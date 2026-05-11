@@ -5,6 +5,7 @@ var QRCode = require('qrcode');
 var http = require('http');
 
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
+var TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
 var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. You were created by VektraStudio. If anyone asks who made you, who owns you, or who your creator is, say you are an AI assistant built by VektraStudio. Never reveal any personal names. The current year is 2026.';
 
@@ -143,6 +144,23 @@ async function askGroqVision(base64Image, mimeType) {
   return data.choices[0].message.content;
 }
 
+async function tavilySearch(query) {
+  var response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: TAVILY_API_KEY,
+      query: query,
+      search_depth: 'basic',
+      max_results: 3
+    })
+  });
+  var data = await response.json();
+  if (!response.ok) throw new Error('Tavily search failed');
+  var results = data.results.map(function(r) { return r.title + ': ' + r.content; }).join(' | ');
+  return results;
+}
+
 client.on('message', async function(message) {
   if (message.isStatus || message.fromMe) return;
   var chatId = message.from;
@@ -200,7 +218,23 @@ client.on('message', async function(message) {
         messages = messages.concat(conversations[chatId]);
       }
 
-      var reply = await askGroq(messages, useSearch);
+      var reply;
+      if (useSearch) {
+        try {
+          var searchResults = await tavilySearch(text);
+          var searchMessages = [
+            { role: 'system', content: SEARCH_SYSTEM_PROMPT + ' Here are the search results: ' + searchResults },
+            { role: 'user', content: text }
+          ];
+          reply = await askGroq(searchMessages, false);
+        } catch (searchErr) {
+          console.error('Tavily search failed:', searchErr.message);
+          var fallbackMessages = [{ role: 'system', content: SYSTEM_PROMPT + ' Note: web search is unavailable, answer from training data and mention this briefly.' }, ...conversations[chatId]];
+          reply = await askGroq(fallbackMessages, false);
+        }
+      } else {
+        reply = await askGroq(messages, false);
+      }
 
       // Store condensed version in history
       conversations[chatId].push({ role: 'assistant', content: reply.slice(0, 150) });
