@@ -7,11 +7,11 @@ var http = require('http');
 var GROQ_API_KEY = process.env.GROQ_API_KEY;
 var TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
-var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default. Only switch to another language if the user clearly writes in that language first. You were created by VektraStudio. If anyone asks who made you, who owns you, or who your creator is, say you are an AI assistant built by VektraStudio. Never reveal any personal names. The current year is 2026.';
+var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. You understand and can speak English, Yoruba, Pidgin English (Broken English), Hausa, Igbo, and any mix of these. When the user writes in Pidgin, Yoruba, or any mix — just reply naturally in the same style without announcing or explaining what language they are using. Never say things like you are speaking Yoruba or I detect Pidgin — just flow with it naturally like a friend would. You were created by VektraStudio. If anyone asks who made you, who owns you, or who your creator is, say you are an AI assistant built by VektraStudio. Never reveal any personal names. The current year is 2026.';
 
 var SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
 
-var VISION_PROMPT = 'You are a fun, witty WhatsApp assistant. The user just sent you an image or sticker. React to it naturally like a human friend would — be funny, relatable, or thoughtful depending on what you see. Keep it short, casual, no markdown. Use emojis.';
+var VISION_PROMPT = 'You are a helpful WhatsApp assistant. The user sent you an image. First check the caption/text below the image for instructions. If they ask you to read, type out, or transcribe the image — read ALL the text in the image carefully and type it out exactly. If they ask what is in the image or no specific instruction — react naturally like a human friend would, be fun and casual. Use emojis. No markdown.';
 
 var MAX_HISTORY = 10;
 var latestQR = null;
@@ -20,7 +20,7 @@ var startupError = null;
 var conversations = {};
 
 // Keywords that trigger web search
-var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'check online', 'search it', 'look online', 'find online', 'check it online', 'online'];
+var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'check online', 'search it', 'look online', 'find online', 'check it online', 'what happened', 'online'];
 
 function needsWebSearch(text) {
   var lower = text.toLowerCase();
@@ -117,7 +117,7 @@ async function askGroq(messages, useSearch) {
   }
 }
 
-async function askGroqVision(base64Image, mimeType) {
+async function askGroqVision(base64Image, mimeType, caption) {
   var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -130,7 +130,7 @@ async function askGroqVision(base64Image, mimeType) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: VISION_PROMPT },
+            { type: 'text', text: VISION_PROMPT + (caption ? ' User instruction: ' + caption : '') },
             { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64Image } }
           ]
         }
@@ -177,7 +177,18 @@ client.on('message', async function(message) {
         var media = await message.downloadMedia();
         if (!media) { await message.reply('Could not load that 😅'); return; }
         var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
-        var visionReply = await askGroqVision(media.data, mimeOverride);
+        var caption = message.body ? message.body.trim() : '';
+        var quotedContext = '';
+        if (message.hasQuotedMsg) {
+          try {
+            var quotedMsg = await message.getQuotedMessage();
+            if (quotedMsg && quotedMsg.body) {
+              quotedContext = 'This sticker is being used as a reply to:  + quotedMsg.body + ';
+            }
+          } catch(e) {}
+        }
+        var fullContext = caption || quotedContext || '';
+        var visionReply = await askGroqVision(media.data, mimeOverride, fullContext);
         await message.reply(visionReply);
       } catch (e) {
         console.error('Vision error:', e.message);
