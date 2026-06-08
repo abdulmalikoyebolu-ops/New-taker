@@ -123,6 +123,11 @@ async function connectToWhatsApp() {
     logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
     generateHighQualityLinkPreview: false,
+    browser: ['Vektra Bot', 'Chrome', '120.0.0'],
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    keepAliveIntervalMs: 10000,
+    retryRequestDelayMs: 2000,
     getMessage: async () => ({ conversation: '' })
   });
 
