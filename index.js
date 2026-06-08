@@ -1,114 +1,62 @@
 require('dotenv').config();
-var Client = require('whatsapp-web.js').Client;
-var LocalAuth = require('whatsapp-web.js').LocalAuth;
-var QRCode = require('qrcode');
-var http = require('http');
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  isJidBroadcast
+} = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const qrcode = require('qrcode');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const pino = require('pino');
 
-var GROQ_API_KEY = process.env.GROQ_API_KEY;
-var TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const AUTH_FOLDER = './auth_info';
 
-var SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default no matter what. Only switch to another language if the person is writing FULLY in that language with no English at all. If someone uses Nigerian slang words mixed with English like Awfa, How far, Omo, Abeg, Wahala, Na so, Oya, Wetin, Shey, Ehen — still reply in English. You understand these slangs: Awfa means hey or what is up. How far means how are you. E don do means it is finished. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Dey means is or are. Oya means okay lets go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. You were created by VektraStudio. If anyone asks who made you say you are an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026.';
+const SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default no matter what. Only switch to another language if the person is writing FULLY in that language with no English at all. If someone uses Nigerian slang words mixed with English like Awfa, How far, Omo, Abeg, Wahala, Na so, Oya, Wetin, Shey, Ehen — still reply in English. You understand these slangs: Awfa means hey or what is up. How far means how are you. E don do means it is finished. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Dey means is or are. Oya means okay lets go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. You were created by VektraStudio. If anyone asks who made you say you are an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026.';
 
-var SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
+const SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
 
-var VISION_PROMPT = 'You are a fun witty WhatsApp friend. The user sent you an image or sticker. Check the user instruction first. If they ask you to read or type out text in the image — do that carefully. If it is a sticker or meme — react like a human friend would, be funny and relatable, match the energy of the sticker. If it is a selfie or photo of a person — react casually like a friend, say something fun or complimentary. Never describe the image formally like a robot. Keep it short, casual, use emojis, no markdown.';
+const VISION_PROMPT = 'You are a fun witty WhatsApp friend. The user sent you an image or sticker. Check the user instruction first. If they ask you to read or type out text in the image — do that carefully. If it is a sticker or meme — react like a human friend would, be funny and relatable, match the energy of the sticker. If it is a selfie or photo of a person — react casually like a friend, say something fun or complimentary. Never describe the image formally like a robot. Keep it short, casual, use emojis, no markdown.';
 
-var MAX_HISTORY = 10;
-var latestQR = null;
-var isConnected = false;
-var startupError = null;
-var conversations = {};
+const MAX_HISTORY = 10;
+const SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'search it', 'look online', 'find online', 'check it online', 'what happened', 'online'];
 
-// Keywords that trigger web search
-var SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'check online', 'search it', 'look online', 'find online', 'check it online', 'what happened', 'online'];
+let latestQR = null;
+let isConnected = false;
+let conversations = {};
+let sock = null;
 
 function needsWebSearch(text) {
-  var lower = text.toLowerCase();
-  return SEARCH_KEYWORDS.some(function(keyword) {
-    return lower.includes(keyword);
-  });
+  const lower = text.toLowerCase();
+  return SEARCH_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-var client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-software-rasterizer',
-      '--disable-extensions',
-      '--no-first-run',
-      '--single-process',
-      '--max-old-space-size=256',
-      '--memory-pressure-off',
-      '--disable-background-networking',
-      '--disable-default-apps',
-      '--disable-sync',
-      '--disable-translate',
-      '--hide-scrollbars',
-      '--metrics-recording-only',
-      '--mute-audio',
-      '--safebrowsing-disable-auto-update',
-      '--ignore-certificate-errors',
-      '--ignore-ssl-errors'
-    ],
-    headless: true,
-    timeout: 60000
-  }
-});
-
-client.on('qr', function(qr) {
-  latestQR = qr;
-  isConnected = false;
-  console.log('QR code generated! Visit the URL to scan.');
-});
-
-client.on('authenticated', function() {
-  console.log('Authenticated!');
-});
-
-client.on('ready', function() {
-  latestQR = null;
-  isConnected = true;
-  console.log('Bot is online and ready!');
-});
-
-client.on('disconnected', function(reason) {
-  console.log('Disconnected:', reason);
-  isConnected = false;
-  latestQR = null;
-  setTimeout(function() { client.initialize(); }, 5000);
-});
-
-client.on('auth_failure', function(msg) {
-  console.error('Auth failure:', msg);
-  startupError = msg;
-});
-
-async function askGroq(messages, useSearch) {
-  var model = useSearch ? 'compound-beta' : 'llama-3.1-8b-instant';
-  var controller = new AbortController();
-  var timeout = setTimeout(function() { controller.abort(); }, useSearch ? 60000 : 30000);
+async function askGroq(messages) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model,
-        messages: messages,
+        model: 'llama-3.1-8b-instant',
+        messages,
         max_tokens: 500,
         temperature: 0.7
       }),
       signal: controller.signal
     });
     clearTimeout(timeout);
-    var data = await response.json();
+    const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message || 'Groq API error');
     return data.choices[0].message.content;
   } catch (e) {
@@ -118,7 +66,7 @@ async function askGroq(messages, useSearch) {
 }
 
 async function askGroqVision(base64Image, mimeType, caption) {
-  var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ' + GROQ_API_KEY,
@@ -139,186 +87,232 @@ async function askGroqVision(base64Image, mimeType, caption) {
       temperature: 0.8
     })
   });
-  var data = await response.json();
+  const data = await response.json();
   if (!response.ok) throw new Error(data.error?.message || 'Groq Vision API error');
   return data.choices[0].message.content;
 }
 
 async function tavilySearch(query) {
-  var response = await fetch('https://api.tavily.com/search', {
+  const response = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       api_key: TAVILY_API_KEY,
-      query: query,
+      query,
       search_depth: 'basic',
       max_results: 3
     })
   });
-  var data = await response.json();
+  const data = await response.json();
   if (!response.ok) throw new Error('Tavily search failed');
-  var results = data.results.map(function(r) { return r.title + ': ' + r.content; }).join(' | ');
-  return results;
+  return data.results.map(r => r.title + ': ' + r.content).join(' | ');
 }
 
-client.on('message', async function(message) {
-  if (message.isStatus || message.fromMe) return;
-  var chatId = message.from;
-  if (!conversations[chatId]) conversations[chatId] = [];
+async function connectToWhatsApp() {
+  if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER, { recursive: true });
 
-  try {
-    // Mark as seen and show typing
-    await client.sendSeen(chatId);
-    var chat = await message.getChat();
-    await chat.sendStateTyping();
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+  const { version } = await fetchLatestBaileysVersion();
 
-    if (message.type === 'image' || message.type === 'sticker') {
+  sock = makeWASocket({
+    version,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
+    },
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: false,
+    generateHighQualityLinkPreview: false,
+    getMessage: async () => ({ conversation: '' })
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+    if (qr) {
+      latestQR = qr;
+      isConnected = false;
+      console.log('QR code ready — visit the bot URL to scan.');
+    }
+
+    if (connection === 'open') {
+      latestQR = null;
+      isConnected = true;
+      console.log('Bot is online and ready!');
+    }
+
+    if (connection === 'close') {
+      isConnected = false;
+      latestQR = null;
+      const statusCode = lastDisconnect?.error instanceof Boom
+        ? lastDisconnect.error.output?.statusCode
+        : 0;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      console.log('Connection closed. Status:', statusCode, '| Reconnecting:', shouldReconnect);
+      if (shouldReconnect) {
+        setTimeout(connectToWhatsApp, 5000);
+      } else {
+        // Logged out — clear auth so fresh QR is generated on restart
+        console.log('Logged out. Clearing auth...');
+        fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
+        setTimeout(connectToWhatsApp, 3000);
+      }
+    }
+  });
+
+  sock.ev.on('messages.upsert', async ({ messages: msgs, type }) => {
+    if (type !== 'notify') return;
+
+    for (const message of msgs) {
       try {
-        var media = await message.downloadMedia();
-        if (!media) { await message.reply('Could not load that 😅'); return; }
-        var mimeOverride = message.type === 'sticker' ? 'image/jpeg' : media.mimetype;
-        var caption = message.body ? message.body.trim() : '';
-        var quotedContext = '';
-        if (message.hasQuotedMsg) {
+        // Ignore broadcasts, status updates, and own messages
+        if (!message.message) continue;
+        if (message.key.fromMe) continue;
+        if (isJidBroadcast(message.key.remoteJid)) continue;
+        if (message.key.remoteJid === 'status@broadcast') continue;
+
+        const jid = message.key.remoteJid;
+        const msgContent = message.message;
+
+        // Mark as read
+        await sock.readMessages([message.key]);
+
+        // Show typing indicator
+        await sock.sendPresenceUpdate('composing', jid);
+
+        if (!conversations[jid]) conversations[jid] = [];
+
+        // --- IMAGE / STICKER ---
+        const isImage = !!msgContent.imageMessage;
+        const isSticker = !!msgContent.stickerMessage;
+
+        if (isImage || isSticker) {
           try {
-            var quotedMsg = await message.getQuotedMessage();
-            if (quotedMsg && quotedMsg.body) {
-              quotedContext = 'This sticker is being used as a reply to:  + quotedMsg.body + ';
+            const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+            const buffer = await downloadMediaMessage(message, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+            const mimeType = isSticker ? 'image/webp' : (msgContent.imageMessage?.mimetype || 'image/jpeg');
+            const base64 = buffer.toString('base64');
+            const caption = isImage ? (msgContent.imageMessage?.caption || '') : '';
+            const visionReply = await askGroqVision(base64, mimeType, caption);
+            await sock.sendMessage(jid, { text: visionReply }, { quoted: message });
+          } catch (e) {
+            console.error('Vision error:', e.message);
+            await sock.sendMessage(jid, { text: 'Lol I saw it but my eyes glitched 😅 send again!' }, { quoted: message });
+          }
+          await sock.sendPresenceUpdate('paused', jid);
+          continue;
+        }
+
+        // --- VOICE NOTE / AUDIO ---
+        const isVoice = !!msgContent.audioMessage;
+        if (isVoice) {
+          try {
+            const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+            const buffer = await downloadMediaMessage(message, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+            const audioBlob = new Blob([buffer], { type: msgContent.audioMessage?.mimetype || 'audio/ogg' });
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.ogg');
+            formData.append('model', 'whisper-large-v3');
+            formData.append('response_format', 'json');
+            const transcribeRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY },
+              body: formData
+            });
+            const transcribeData = await transcribeRes.json();
+            if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
+            const transcribedText = transcribeData.text;
+            if (!transcribedText?.trim()) {
+              await sock.sendMessage(jid, { text: 'I could not hear anything in that voice note 🎤' }, { quoted: message });
+            } else {
+              conversations[jid].push({ role: 'user', content: transcribedText });
+              if (conversations[jid].length > MAX_HISTORY) conversations[jid] = conversations[jid].slice(-MAX_HISTORY);
+              const voiceMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[jid]];
+              const voiceReply = await askGroq(voiceMessages);
+              conversations[jid].push({ role: 'assistant', content: voiceReply.slice(0, 150) });
+              await sock.sendMessage(jid, { text: voiceReply }, { quoted: message });
             }
-          } catch(e) {}
+          } catch (e) {
+            console.error('Voice error:', e.message);
+            await sock.sendMessage(jid, { text: 'Could not process your voice note, try again! 😅' }, { quoted: message });
+          }
+          await sock.sendPresenceUpdate('paused', jid);
+          continue;
         }
-        var fullContext = caption || quotedContext || '';
-        var visionReply = await askGroqVision(media.data, mimeOverride, fullContext);
-        await message.reply(visionReply);
-      } catch (e) {
-        console.error('Vision error:', e.message);
-        await message.reply('Lol I saw it but my eyes glitched 😅 send again!');
-      }
-      return;
-    }
 
-    if (message.type === 'chat') {
-      var text = message.body ? message.body.trim() : '';
-      if (!text) return;
+        // --- TEXT MESSAGE ---
+        const text = (
+          msgContent.conversation ||
+          msgContent.extendedTextMessage?.text ||
+          ''
+        ).trim();
 
-      if (text === '/clear') {
-        conversations[chatId] = [];
-        await message.reply('Memory cleared! Fresh start 🧹');
-        return;
-      }
-
-      if (text === '/help') {
-        await message.reply('Commands:\n/clear - Clear chat memory\n/help - Show this message\n\nJust type normally to chat with me! 😊');
-        return;
-      }
-
-      var useSearch = needsWebSearch(text);
-      conversations[chatId].push({ role: 'user', content: text });
-
-      if (conversations[chatId].length > MAX_HISTORY) {
-        conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
-      }
-
-      var systemPrompt = useSearch ? SEARCH_SYSTEM_PROMPT : SYSTEM_PROMPT;
-      var messages = [{ role: 'system', content: systemPrompt }];
-
-      // For search, only send the current question (no history) to avoid loop
-      if (useSearch) {
-        messages.push({ role: 'user', content: text });
-      } else {
-        messages = messages.concat(conversations[chatId]);
-      }
-
-      var reply;
-      if (useSearch) {
-        try {
-          var searchResults = await tavilySearch(text);
-          var searchMessages = [
-            { role: 'system', content: SEARCH_SYSTEM_PROMPT + ' Here are the search results: ' + searchResults },
-            { role: 'user', content: text }
-          ];
-          reply = await askGroq(searchMessages, false);
-        } catch (searchErr) {
-          console.error('Tavily search failed:', searchErr.message);
-          var fallbackMessages = [{ role: 'system', content: SYSTEM_PROMPT + ' Note: web search is unavailable, answer from training data and mention this briefly.' }, ...conversations[chatId]];
-          reply = await askGroq(fallbackMessages, false);
+        if (!text) {
+          await sock.sendPresenceUpdate('paused', jid);
+          continue;
         }
-      } else {
-        reply = await askGroq(messages, false);
-      }
 
-      // Store condensed version in history
-      conversations[chatId].push({ role: 'assistant', content: reply.slice(0, 150) });
-      await message.reply(reply);
+        if (text === '/clear') {
+          conversations[jid] = [];
+          await sock.sendMessage(jid, { text: 'Memory cleared! Fresh start 🧹' }, { quoted: message });
+          await sock.sendPresenceUpdate('paused', jid);
+          continue;
+        }
 
-    } else if (message.type === 'ptt' || message.type === 'audio') {
-      try {
-        var voiceMedia = await message.downloadMedia();
-        if (!voiceMedia) { await message.reply('Could not load your voice note 😅'); return; }
-        var audioBuffer = Buffer.from(voiceMedia.data, 'base64');
-        var { Blob } = require('buffer');
-        var audioBlob = new Blob([audioBuffer], { type: voiceMedia.mimetype || 'audio/ogg' });
-        var formData = new FormData();
-        formData.append('file', audioBlob, 'audio.ogg');
-        formData.append('model', 'whisper-large-v3');
-        formData.append('response_format', 'json');
-        var transcribeRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY },
-          body: formData
-        });
-        var transcribeData = await transcribeRes.json();
-        if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
-        var transcribedText = transcribeData.text;
-        if (!transcribedText || !transcribedText.trim()) { await message.reply('I could not hear anything in that voice note 🎤'); return; }
-        conversations[chatId].push({ role: 'user', content: transcribedText });
-        if (conversations[chatId].length > MAX_HISTORY) conversations[chatId] = conversations[chatId].slice(-MAX_HISTORY);
-        var voiceMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[chatId]];
-        var voiceReply = await askGroq(voiceMessages, false);
-        conversations[chatId].push({ role: 'assistant', content: voiceReply.slice(0, 150) });
-        await message.reply(voiceReply);
+        if (text === '/help') {
+          await sock.sendMessage(jid, { text: 'Commands:\n/clear - Clear chat memory\n/help - Show this message\n\nJust type normally to chat with me! 😊' }, { quoted: message });
+          await sock.sendPresenceUpdate('paused', jid);
+          continue;
+        }
+
+        const useSearch = needsWebSearch(text);
+        conversations[jid].push({ role: 'user', content: text });
+        if (conversations[jid].length > MAX_HISTORY) conversations[jid] = conversations[jid].slice(-MAX_HISTORY);
+
+        let reply;
+        if (useSearch) {
+          try {
+            const searchResults = await tavilySearch(text);
+            const searchMessages = [
+              { role: 'system', content: SEARCH_SYSTEM_PROMPT + ' Here are the search results: ' + searchResults },
+              { role: 'user', content: text }
+            ];
+            reply = await askGroq(searchMessages);
+          } catch (searchErr) {
+            console.error('Search failed:', searchErr.message);
+            const fallback = [
+              { role: 'system', content: SYSTEM_PROMPT + ' Note: web search is unavailable, answer from training data and mention this briefly.' },
+              ...conversations[jid]
+            ];
+            reply = await askGroq(fallback);
+          }
+        } else {
+          const chatMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[jid]];
+          reply = await askGroq(chatMessages);
+        }
+
+        conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
+        await sock.sendMessage(jid, { text: reply }, { quoted: message });
+        await sock.sendPresenceUpdate('paused', jid);
+
       } catch (e) {
-        console.error('Voice error:', e.message);
-        await message.reply('Could not process your voice note, try again! 😅');
+        console.error('Message handling error:', e.message);
       }
-      return;
-    } else {
-      return;
     }
+  });
+}
 
-  } catch (e) {
-    console.error('Message error:', e.message);
-    if (conversations[chatId] && conversations[chatId].length > 0) conversations[chatId].pop();
-    await message.reply('Something went wrong, try again! 😅');
-  }
-});
-
-process.on('unhandledRejection', function(reason) {
-  console.error('Unhandled Rejection:', reason);
-  if (reason && reason.message && reason.message.includes('auth timeout')) {
-    console.log('Auth timeout - reinitializing...');
-    isConnected = false;
-    latestQR = null;
-    setTimeout(function() {
-      try { client.initialize(); } catch(e) { console.error('Reinit error:', e.message); }
-    }, 5000);
-  }
-});
-
-process.on('uncaughtException', function(err) {
-  console.error('Uncaught Exception:', err.message);
-});
-
-var server = http.createServer(function(req, res) {
+// HTTP Server — same QR page as before
+const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/html' });
   if (isConnected) {
     res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Bot Status</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
     .badge{background:#16a34a;color:#fff;padding:10px 24px;border-radius:100px;font-size:15px;font-weight:600}
     p{color:#888;font-size:13px}</style></head>
-    <body><div class="badge">✅ Bot is connected & running!</div><p>Your WhatsApp bot is online.</p></body></html>`);
+    <body><div class="badge">✅ Bot is connected & running!</div><p>Vektra Chat Bot is online.</p></body></html>`);
   } else if (latestQR) {
-    QRCode.toDataURL(latestQR, { width: 300, margin: 2 }, function(err, url) {
+    qrcode.toDataURL(latestQR, { width: 300, margin: 2 }, (err, url) => {
       if (err) { res.end('Error generating QR'); return; }
       res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Scan QR Code</title>
       <meta http-equiv="refresh" content="30"/>
@@ -342,8 +336,10 @@ var server = http.createServer(function(req, res) {
   }
 });
 
-server.listen(process.env.PORT || 3000, '0.0.0.0', function() {
+server.listen(process.env.PORT || 3000, '0.0.0.0', () => {
   console.log('Server running on port', process.env.PORT || 3000);
-  console.log('Initializing WhatsApp client...');
-  client.initialize();
+  connectToWhatsApp();
 });
+
+process.on('unhandledRejection', reason => console.error('Unhandled Rejection:', reason));
+process.on('uncaughtException', err => console.error('Uncaught Exception:', err.message));
