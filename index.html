@@ -62,8 +62,67 @@ body.light .h-sub { color:#888; }
 body.light .ibtn { background:rgba(0,0,0,0.05); border-color:rgba(0,0,0,0.1); color:#888; }
 .ibtn:hover { background:rgba(59,130,246,0.12); border-color:rgba(59,130,246,0.3); color:#3b82f6; }
 .ibtn svg { width:16px; height:16px; pointer-events:none; }
-.ibtn.rec { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.4); color:#ef4444; animation:recpulse 1s infinite; }
-@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+.ibtn.rec { background:rgba(239,68,68,0.2); border-color:#ef4444; color:#ef4444; }
+
+/* Recording indicator bar */
+#recbar {
+  display:none;
+  align-items:center; gap:10px;
+  padding:8px 14px; margin-bottom:8px;
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.3);
+  border-radius:16px; color:#ef4444; font-size:13px; font-weight:500;
+}
+#recbar.show { display:flex; }
+.recdot {
+  width:10px; height:10px; border-radius:50%; background:#ef4444;
+  animation:recpulse 1s infinite; flex-shrink:0;
+}
+@keyframes recpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.7);}}
+.rectime { flex:1; }
+.recstop {
+  background:none; border:1px solid rgba(239,68,68,0.4);
+  color:#ef4444; border-radius:12px; padding:4px 10px;
+  font-size:11px; cursor:pointer; font-family:inherit;
+}
+.recstop:hover { background:rgba(239,68,68,0.1); }
+
+/* Image preview modal */
+#imgpreview {
+  display:none;
+  position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(10px);
+  align-items:center; justify-content:center; padding:20px;
+}
+#imgpreview.show { display:flex; }
+.prev-box {
+  background:#111; border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px; padding:16px; width:100%; max-width:420px;
+  display:flex; flex-direction:column; gap:12px;
+}
+body.light .prev-box { background:#fff; border-color:rgba(0,0,0,0.1); }
+.prev-img { width:100%; border-radius:12px; max-height:300px; object-fit:contain; display:block; }
+.prev-caption {
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px; padding:10px 14px; color:#f0f0f8;
+  font-family:inherit; font-size:14px; outline:none; resize:none;
+  width:100%;
+}
+body.light .prev-caption { background:#f5f5f7; border-color:rgba(0,0,0,0.1); color:#111; }
+.prev-caption::placeholder { color:#555; }
+.prev-actions { display:flex; gap:8px; }
+.prev-cancel {
+  flex:1; padding:10px; border-radius:12px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  color:#888; font-family:inherit; font-size:13px; cursor:pointer;
+}
+body.light .prev-cancel { background:rgba(0,0,0,0.05); border-color:rgba(0,0,0,0.1); }
+.prev-send {
+  flex:2; padding:10px; border-radius:12px;
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
+  border:none; color:#fff; font-family:inherit; font-size:13px;
+  font-weight:600; cursor:pointer;
+}
 
 .cbtn {
   background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
@@ -163,8 +222,8 @@ body.light #msginput::placeholder { color:#aaa; }
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0; transition:all 0.2s;
 }
-#sendbtn:hover { transform:scale(1.08); }
-#sendbtn:disabled { background:rgba(255,255,255,0.08); cursor:not-allowed; transform:none; }
+#sendbtn:hover { transform:scale(1.08); opacity:0.9; }
+#sendbtn:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
 #sendbtn svg { width:15px; height:15px; pointer-events:none; }
 .powered { text-align:center; font-size:10px; color:#333350; margin-top:8px; }
 body.light .powered { color:#aaa; }
@@ -211,6 +270,25 @@ body.light .powered { color:#aaa; }
   </div>
 </div>
 
+<!-- Recording bar -->
+<div id="recbar">
+  <div class="recdot"></div>
+  <span class="rectime" id="rectime">Recording... 0:00</span>
+  <button class="recstop" onclick="toggleMic()">Stop</button>
+</div>
+
+<!-- Image preview modal -->
+<div id="imgpreview">
+  <div class="prev-box">
+    <img class="prev-img" id="previmg" src="" alt="preview"/>
+    <textarea class="prev-caption" id="prevcaption" placeholder="Add a caption..." rows="2"></textarea>
+    <div class="prev-actions">
+      <button class="prev-cancel" onclick="cancelPreview()">Cancel</button>
+      <button class="prev-send" onclick="confirmSendImage()">Send</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   <div class="f-inner">
     <div class="irow">
@@ -226,7 +304,7 @@ body.light .powered { color:#aaa; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
-    <div class="powered">Powered by <span>VektraStudio</span> &middot; Groq AI</div>
+    
   </div>
 </footer>
 
@@ -373,15 +451,39 @@ function quickSend(text) {
   sendMsg(text);
 }
 
-async function sendImage(event) {
+var pendingFile = null;
+
+function sendImage(event) {
   var file = event.target.files[0];
   if (!file) return;
   event.target.value = '';
+  pendingFile = file;
   var url = URL.createObjectURL(file);
-  addMsg('', 'user', '<img src="' + url + '" alt="img" style="max-width:100%;border-radius:12px;display:block;"/>');
+  document.getElementById('previmg').src = url;
+  document.getElementById('prevcaption').value = '';
+  document.getElementById('imgpreview').classList.add('show');
+}
+
+function cancelPreview() {
+  document.getElementById('imgpreview').classList.remove('show');
+  pendingFile = null;
+}
+
+async function confirmSendImage() {
+  if (!pendingFile) return;
+  var file = pendingFile;
+  var caption = document.getElementById('prevcaption').value.trim();
+  var url = document.getElementById('previmg').src;
+  document.getElementById('imgpreview').classList.remove('show');
+  pendingFile = null;
+
+  var html = '<img src="' + url + '" alt="img" style="max-width:100%;border-radius:12px;display:block;"/>';
+  if (caption) html += '<div style="margin-top:6px;font-size:13px;">' + caption + '</div>';
+  addMsg('', 'user', html);
   showTyping();
   busy = true;
   sbtn.disabled = true;
+
   var reader = new FileReader();
   reader.onload = async function(e) {
     var b64 = e.target.result.split(',')[1];
@@ -389,20 +491,23 @@ async function sendImage(event) {
       var res = await fetch(API + '/vision', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({image: b64, mimeType: file.type, caption: '', sessionId: SID})
+        body: JSON.stringify({image: b64, mimeType: file.type, caption: caption, sessionId: SID})
       });
       var data = await res.json();
       hideTyping();
       addMsg(data.reply || 'Could not analyze image.', 'bot');
     } catch(e) {
       hideTyping();
-      addMsg('Could not reach server. Try again in a moment!', 'bot');
+      addMsg('Could not reach server. Try again!', 'bot');
     }
     busy = false;
     sbtn.disabled = !inp.value.trim();
   };
   reader.readAsDataURL(file);
 }
+
+var recInterval = null;
+var recSeconds = 0;
 
 async function toggleMic() {
   if (!recording) {
@@ -412,10 +517,12 @@ async function toggleMic() {
       recorder = new MediaRecorder(stream);
       recorder.ondataavailable = function(e) { chunks.push(e.data); };
       recorder.onstop = async function() {
+        clearInterval(recInterval);
+        document.getElementById('recbar').classList.remove('show');
         stream.getTracks().forEach(function(t) { t.stop(); });
         var blob = new Blob(chunks, {type: 'audio/webm'});
         var audioUrl = URL.createObjectURL(blob);
-        addMsg('', 'user', '<audio controls src="' + audioUrl + '" style="width:200px;accent-color:#3b82f6;"></audio>');
+        addMsg('', 'user', '<audio controls src="' + audioUrl + '" style="width:220px;accent-color:#3b82f6;border-radius:8px;"></audio>');
         showTyping();
         busy = true;
         sbtn.disabled = true;
@@ -443,6 +550,16 @@ async function toggleMic() {
       recorder.start();
       recording = true;
       micbtn.classList.add('rec');
+      // Show recording bar with timer
+      recSeconds = 0;
+      document.getElementById('rectime').textContent = 'Recording... 0:00';
+      document.getElementById('recbar').classList.add('show');
+      recInterval = setInterval(function() {
+        recSeconds++;
+        var m = Math.floor(recSeconds / 60);
+        var s = recSeconds % 60;
+        document.getElementById('rectime').textContent = 'Recording... ' + m + ':' + (s < 10 ? '0' : '') + s;
+      }, 1000);
     } catch(e) {
       alert('Microphone access denied. Please allow microphone access.');
     }
@@ -475,4 +592,4 @@ function clearChat() {
 }
 </script>
 </body>
-</html>
+                                                                                                  </html>
