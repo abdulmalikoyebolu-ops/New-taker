@@ -471,7 +471,7 @@ const server = http.createServer(async (req, res) => {
   // ── GET / — Serve web chat UI ──
   res.writeHead(200, { 'Content-Type': 'text/html' });
   try {
-    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     res.end(html);
   } catch (e) {
     res.end('<h1>Chat UI not found. Make sure public/index.html exists.</h1>');
