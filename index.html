@@ -64,28 +64,87 @@ body.light .ibtn { background:rgba(0,0,0,0.05); border-color:rgba(0,0,0,0.1); co
 .ibtn svg { width:16px; height:16px; pointer-events:none; }
 .ibtn.rec { background:rgba(239,68,68,0.2); border-color:#ef4444; color:#ef4444; }
 
-/* Recording indicator bar */
-#recbar {
-  display:none;
-  align-items:center; gap:10px;
-  padding:8px 14px; margin-bottom:8px;
-  background:rgba(239,68,68,0.1);
-  border:1px solid rgba(239,68,68,0.3);
-  border-radius:16px; color:#ef4444; font-size:13px; font-weight:500;
+/* Fullscreen recording overlay */
+#recoverlay {
+  display:none; position:fixed; inset:0; z-index:200;
+  background:#0a0a0a; flex-direction:column;
+  align-items:center; justify-content:flex-end;
+  padding-bottom:40px;
 }
-#recbar.show { display:flex; }
-.recdot {
-  width:10px; height:10px; border-radius:50%; background:#ef4444;
-  animation:recpulse 1s infinite; flex-shrink:0;
+#recoverlay.show { display:flex; }
+body.light #recoverlay { background:#f0f0f2; }
+
+.rec-top {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:20px;
 }
-@keyframes recpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.7);}}
-.rectime { flex:1; }
-.recstop {
-  background:none; border:1px solid rgba(239,68,68,0.4);
-  color:#ef4444; border-radius:12px; padding:4px 10px;
-  font-size:11px; cursor:pointer; font-family:inherit;
+.rec-timer-big {
+  font-size:52px; font-weight:300; letter-spacing:2px;
+  color:#f0f0f8; font-variant-numeric:tabular-nums;
 }
-.recstop:hover { background:rgba(239,68,68,0.1); }
+body.light .rec-timer-big { color:#111; }
+
+/* Waveform bars */
+.rec-wave {
+  display:flex; align-items:center; gap:3px;
+  height:60px; padding:0 30px;
+}
+.rec-wave .wb {
+  width:3px; border-radius:3px; background:#ef4444;
+  animation:wavebar 0.6s ease-in-out infinite alternate;
+  flex-shrink:0;
+}
+.rec-wave .wb:nth-child(odd) { animation-delay:0.1s; }
+.rec-wave .wb:nth-child(3n) { animation-delay:0.2s; }
+.rec-wave .wb:nth-child(4n) { animation-delay:0.3s; }
+@keyframes wavebar {
+  from { height:6px; opacity:0.3; }
+  to { height:var(--h,30px); opacity:1; }
+}
+.rec-wave .wb.idle { height:4px !important; animation:none; opacity:0.2; }
+
+.rec-label {
+  font-size:14px; color:#ef4444; font-weight:500;
+  display:flex; align-items:center; gap:8px;
+}
+.rec-dot2 {
+  width:8px; height:8px; border-radius:50%; background:#ef4444;
+  animation:recpulse 1s infinite;
+}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:0.2;}}
+
+.rec-actions {
+  display:flex; align-items:center; gap:40px; margin-top:20px;
+}
+.rec-del {
+  width:52px; height:52px; border-radius:50%;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  color:#888; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.2s;
+}
+body.light .rec-del { background:rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.1); }
+.rec-del:hover { background:rgba(239,68,68,0.1); color:#ef4444; }
+.rec-del svg { width:22px; height:22px; pointer-events:none; }
+
+.rec-stop-btn {
+  width:70px; height:70px; border-radius:50%;
+  background:#ef4444; border:none; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.2s; box-shadow:0 0 0 0 rgba(239,68,68,0.4);
+  animation:recglow 1.5s infinite;
+}
+@keyframes recglow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4);} 50%{box-shadow:0 0 0 12px rgba(239,68,68,0);} }
+.rec-stop-btn:hover { transform:scale(1.05); }
+.rec-stop-btn svg { width:28px; height:28px; pointer-events:none; }
+
+.rec-send-btn {
+  width:52px; height:52px; border-radius:50%;
+  background:linear-gradient(135deg,#3b82f6,#6366f1); border:none; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.2s;
+}
+.rec-send-btn:hover { transform:scale(1.05); opacity:0.9; }
+.rec-send-btn svg { width:22px; height:22px; pointer-events:none; }
 
 /* Image preview modal */
 #imgpreview {
@@ -270,11 +329,24 @@ body.light .powered { color:#aaa; }
   </div>
 </div>
 
-<!-- Recording bar -->
-<div id="recbar">
-  <div class="recdot"></div>
-  <span class="rectime" id="rectime">Recording... 0:00</span>
-  <button class="recstop" onclick="toggleMic()">Stop</button>
+<!-- Fullscreen recording overlay -->
+<div id="recoverlay">
+  <div class="rec-top">
+    <div class="rec-label"><div class="rec-dot2"></div>Recording</div>
+    <div class="rec-timer-big" id="rectime">0:00</div>
+    <div class="rec-wave" id="recwave"></div>
+  </div>
+  <div class="rec-actions">
+    <button class="rec-del" onclick="cancelRec()" title="Delete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    </button>
+    <button class="rec-stop-btn" onclick="stopRec()" title="Stop">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    </button>
+    <button class="rec-send-btn" onclick="sendRec()" title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
 </div>
 
 <!-- Image preview modal -->
@@ -358,7 +430,7 @@ function hideWelcome() {
   if (w) w.style.display = 'none';
 }
 
-function addMsg(text, role, html) {
+function addMsg(text, role, html, domEl) {
   hideWelcome();
   var row = document.createElement('div');
   row.className = 'row ' + role;
@@ -374,7 +446,8 @@ function addMsg(text, role, html) {
   col.className = 'bcol';
   var bub = document.createElement('div');
   bub.className = 'bubble';
-  if (html) bub.innerHTML = html;
+  if (domEl) bub.appendChild(domEl);
+  else if (html) bub.innerHTML = html;
   else bub.textContent = text;
   var t = document.createElement('div');
   t.className = 'btime';
@@ -522,7 +595,26 @@ async function toggleMic() {
         stream.getTracks().forEach(function(t) { t.stop(); });
         var blob = new Blob(chunks, {type: 'audio/webm'});
         var audioUrl = URL.createObjectURL(blob);
-        addMsg('', 'user', '<audio controls src="' + audioUrl + '" style="width:220px;accent-color:#3b82f6;border-radius:8px;"></audio>');
+        var aid2 = 'va' + Date.now();
+      var wvHtml2 = '';
+      for(var wi2=0;wi2<28;wi2++){
+        var h2=Math.floor(Math.random()*24)+4;
+        wvHtml2 += '<div style="width:3px;height:'+h2+'px;border-radius:3px;background:rgba(255,255,255,0.7);flex-shrink:0;"></div>';
+      }
+      var vb2 = document.createElement('div');
+      vb2.style.cssText = 'display:flex;align-items:center;gap:10px;min-width:200px;';
+      var pb2 = document.createElement('button');
+      pb2.style.cssText = 'width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;';
+      pb2.textContent = '▶';
+      var ae2 = document.createElement('audio');
+      ae2.src = audioUrl;
+      pb2.onclick = function() { if(ae2.paused){ae2.play();pb2.textContent='⏸';}else{ae2.pause();pb2.textContent='▶';} };
+      ae2.onended = function(){pb2.textContent='▶';};
+      var wd2 = document.createElement('div');
+      wd2.style.cssText = 'display:flex;align-items:center;gap:2px;flex:1;height:32px;';
+      wd2.innerHTML = wvHtml2;
+      vb2.appendChild(pb2); vb2.appendChild(wd2); vb2.appendChild(ae2);
+      addMsg('', 'user', '', vb2)
         showTyping();
         busy = true;
         sbtn.disabled = true;
@@ -592,4 +684,4 @@ function clearChat() {
 }
 </script>
 </body>
-                                                                                                  </html>
+  </html>
