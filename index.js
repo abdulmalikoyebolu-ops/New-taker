@@ -392,6 +392,75 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── POST /vision — Image analysis ──
+  if (req.method === 'POST' && req.url === '/vision') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { image, mimeType, caption, sessionId } = JSON.parse(body);
+        const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply }));
+      } catch (e) {
+        console.error('Vision endpoint error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Could not analyze image.' }));
+      }
+    });
+    return;
+  }
+
+  // ── POST /voice — Voice transcription + reply ──
+  if (req.method === 'POST' && req.url === '/voice') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { audio, mimeType, sessionId } = JSON.parse(body);
+        const sid = sessionId || 'default';
+        if (!webSessions[sid]) webSessions[sid] = [];
+
+        // Decode base64 audio and transcribe
+        const audioBuffer = Buffer.from(audio, 'base64');
+        const audioBlob = new Blob([audioBuffer], { type: mimeType || 'audio/webm' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'whisper-large-v3');
+        formData.append('response_format', 'json');
+
+        const transcribeRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY },
+          body: formData
+        });
+        const transcribeData = await transcribeRes.json();
+        if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
+
+        const transcribedText = transcribeData.text;
+        if (!transcribedText?.trim()) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ reply: 'I could not hear anything in that voice message.' }));
+          return;
+        }
+
+        webSessions[sid].push({ role: 'user', content: transcribedText });
+        if (webSessions[sid].length > MAX_HISTORY) webSessions[sid] = webSessions[sid].slice(-MAX_HISTORY);
+        const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...webSessions[sid]];
+        const reply = await askGroq(messages);
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply, transcribed: transcribedText }));
+      } catch (e) {
+        console.error('Voice endpoint error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Could not process voice message.' }));
+      }
+    });
+    return;
+  }
+
   // ── GET /status — Health check ──
   if (req.method === 'GET' && req.url === '/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -399,36 +468,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── GET / — Status page ──
+  // ── GET / — Serve web chat UI ──
   res.writeHead(200, { 'Content-Type': 'text/html' });
-  if (isConnected) {
-    res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Bot Status</title>
-    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
-    .badge{background:#16a34a;color:#fff;padding:10px 24px;border-radius:100px;font-size:15px;font-weight:600}
-    p{color:#888;font-size:13px}</style></head>
-    <body><div class="badge">✅ Vektra Chat Bot is running!</div><p>WhatsApp connected. Web API active at /chat</p></body></html>`);
-  } else if (latestQR) {
-    qrcode.toDataURL(latestQR, { width: 300, margin: 2 }, (err, url) => {
-      if (err) { res.end('Error generating QR'); return; }
-      res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Scan QR Code</title>
-      <meta http-equiv="refresh" content="30"/>
-      <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;text-align:center;padding:24px}
-      h2{font-size:22px;font-weight:700}.qr-wrap{background:#fff;padding:16px;border-radius:16px}
-      img{display:block;width:280px;height:280px}
-      .steps{background:#141414;border:1px solid #222;border-radius:12px;padding:16px 20px;font-size:13px;color:#aaa;line-height:2;text-align:left}
-      .steps b{color:#fff}.note{font-size:11px;color:#555}</style></head>
-      <body><h2>Scan to connect your WhatsApp</h2>
-      <div class="qr-wrap"><img src="${url}" alt="QR Code"/></div>
-      <div class="steps"><b>How to scan:</b><br/>1. Open WhatsApp on your phone<br/>2. Tap Menu (⋮) → Linked Devices<br/>3. Tap "Link a Device"<br/>4. Point camera at the QR code above</div>
-      <p class="note">Page auto-refreshes every 30 seconds</p></body></html>`);
-    });
-  } else {
-    res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Starting...</title>
-    <meta http-equiv="refresh" content="10"/>
-    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
-    .spinner{width:40px;height:40px;border:3px solid #222;border-top-color:#4f7cff;border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}p{color:#888;font-size:13px}</style></head>
-    <body><div class="spinner"></div><p>Starting up... Web API active at /chat</p></body></html>`);
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    res.end(html);
+  } catch (e) {
+    res.end('<h1>Chat UI not found. Make sure public/index.html exists.</h1>');
   }
 });
 
