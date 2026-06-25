@@ -18,11 +18,11 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 const AUTH_FOLDER = './auth_info';
 
-const SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default no matter what. Only switch to another language if the person is writing FULLY in that language with no English at all. If someone uses Nigerian slang words mixed with English like Awfa, How far, Omo, Abeg, Wahala, Na so, Oya, Wetin, Shey, Ehen — still reply in English. You understand these slangs: Awfa means hey or what is up. How far means how are you. E don do means it is finished. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Dey means is or are. Oya means okay lets go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. You were created by VektraStudio. If anyone asks who made you say you are an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026.';
+const SYSTEM_PROMPT = 'You are a helpful personal AI assistant called Vektra Chat Bot. Be conversational, concise and friendly. Keep responses short and natural like a real person texting. No markdown formatting like asterisks or hashtags. Use emojis occasionally. Always reply in English by default no matter what. Only switch to another language if the person is writing FULLY in that language with no English at all. If someone uses Nigerian slang words mixed with English like Awfa, How far, Omo, Abeg, Wahala, Na so, Oya, Wetin, Shey, Ehen — still reply in English. You understand these slangs: Awfa means hey or what is up. How far means how are you. E don do means it is finished. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Dey means is or are. Oya means okay lets go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. You were created by VektraStudio. If anyone asks who made you say you are an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026.';
 
-const SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant on WhatsApp called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
+const SEARCH_SYSTEM_PROMPT = 'You are a helpful personal AI assistant called Vektra Chat Bot. You have access to real-time web search. Search the web and answer the question accurately with current information. Keep the response concise and natural. No markdown formatting. The current year is 2026.';
 
-const VISION_PROMPT = 'You are a fun witty WhatsApp friend. The user sent you an image or sticker. Check the user instruction first. If they ask you to read or type out text in the image — do that carefully. If it is a sticker or meme — react like a human friend would, be funny and relatable, match the energy of the sticker. If it is a selfie or photo of a person — react casually like a friend, say something fun or complimentary. Never describe the image formally like a robot. Keep it short, casual, use emojis, no markdown.';
+const VISION_PROMPT = 'You are a fun witty AI assistant. The user sent you an image or sticker. Check the user instruction first. If they ask you to read or type out text in the image — do that carefully. If it is a sticker or meme — react like a human friend would, be funny and relatable, match the energy of the sticker. If it is a selfie or photo of a person — react casually like a friend, say something fun or complimentary. Never describe the image formally like a robot. Keep it short, casual, use emojis, no markdown.';
 
 const MAX_HISTORY = 10;
 const SEARCH_KEYWORDS = ['search online', 'google it', 'check online', 'find out', 'look up', 'latest news', 'current price', 'breaking news', 'weather today', 'who won', 'live score', 'this week news', 'search for', 'check the internet', 'search it', 'look online', 'find online', 'check it online', 'what happened', 'online'];
@@ -31,6 +31,9 @@ let latestQR = null;
 let isConnected = false;
 let conversations = {};
 let sock = null;
+
+// Web app sessions (separate from WhatsApp)
+let webSessions = {};
 
 function needsWebSearch(text) {
   const lower = text.toLowerCase();
@@ -157,7 +160,6 @@ async function connectToWhatsApp() {
       if (shouldReconnect) {
         setTimeout(connectToWhatsApp, 5000);
       } else {
-        // Logged out — clear auth so fresh QR is generated on restart
         console.log('Logged out. Clearing auth...');
         fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
         setTimeout(connectToWhatsApp, 3000);
@@ -170,7 +172,6 @@ async function connectToWhatsApp() {
 
     for (const message of msgs) {
       try {
-        // Ignore broadcasts, status updates, and own messages
         if (!message.message) continue;
         if (message.key.fromMe) continue;
         if (isJidBroadcast(message.key.remoteJid)) continue;
@@ -179,15 +180,11 @@ async function connectToWhatsApp() {
         const jid = message.key.remoteJid;
         const msgContent = message.message;
 
-        // Mark as read
         await sock.readMessages([message.key]);
-
-        // Show typing indicator
         await sock.sendPresenceUpdate('composing', jid);
 
         if (!conversations[jid]) conversations[jid] = [];
 
-        // --- IMAGE / STICKER ---
         const isImage = !!msgContent.imageMessage;
         const isSticker = !!msgContent.stickerMessage;
 
@@ -208,7 +205,6 @@ async function connectToWhatsApp() {
           continue;
         }
 
-        // --- VOICE NOTE / AUDIO ---
         const isVoice = !!msgContent.audioMessage;
         if (isVoice) {
           try {
@@ -245,7 +241,6 @@ async function connectToWhatsApp() {
           continue;
         }
 
-        // --- TEXT MESSAGE ---
         const text = (
           msgContent.conversation ||
           msgContent.extendedTextMessage?.text ||
@@ -307,15 +302,111 @@ async function connectToWhatsApp() {
   });
 }
 
-// HTTP Server — same QR page as before
-const server = http.createServer((req, res) => {
+// ─── HTTP Server ───────────────────────────────────────────────────────────────
+const server = http.createServer(async (req, res) => {
+
+  // ── CORS headers (allows web app frontend to call this API) ──
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // ── POST /chat — Web App API endpoint ──
+  if (req.method === 'POST' && req.url === '/chat') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { message, sessionId } = JSON.parse(body);
+
+        if (!message || !message.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Message is required' }));
+          return;
+        }
+
+        const sid = sessionId || 'default';
+        if (!webSessions[sid]) webSessions[sid] = [];
+
+        const useSearch = needsWebSearch(message);
+        webSessions[sid].push({ role: 'user', content: message });
+        if (webSessions[sid].length > MAX_HISTORY) webSessions[sid] = webSessions[sid].slice(-MAX_HISTORY);
+
+        let reply;
+        if (useSearch) {
+          try {
+            const searchResults = await tavilySearch(message);
+            const searchMessages = [
+              { role: 'system', content: SEARCH_SYSTEM_PROMPT + ' Here are the search results: ' + searchResults },
+              { role: 'user', content: message }
+            ];
+            reply = await askGroq(searchMessages);
+          } catch (searchErr) {
+            console.error('Search failed:', searchErr.message);
+            const fallback = [
+              { role: 'system', content: SYSTEM_PROMPT + ' Note: web search is unavailable, answer from training data and mention this briefly.' },
+              ...webSessions[sid]
+            ];
+            reply = await askGroq(fallback);
+          }
+        } else {
+          const chatMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...webSessions[sid]];
+          reply = await askGroq(chatMessages);
+        }
+
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply }));
+
+      } catch (e) {
+        console.error('Web chat error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Something went wrong, try again!' }));
+      }
+    });
+    return;
+  }
+
+  // ── POST /clear — Clear web session memory ──
+  if (req.method === 'POST' && req.url === '/clear') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const { sessionId } = JSON.parse(body || '{}');
+        const sid = sessionId || 'default';
+        webSessions[sid] = [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Memory cleared!' }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request' }));
+      }
+    });
+    return;
+  }
+
+  // ── GET /status — Health check ──
+  if (req.method === 'GET' && req.url === '/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'online', whatsapp: isConnected }));
+    return;
+  }
+
+  // ── GET / — Status page ──
   res.writeHead(200, { 'Content-Type': 'text/html' });
   if (isConnected) {
     res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Bot Status</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
     .badge{background:#16a34a;color:#fff;padding:10px 24px;border-radius:100px;font-size:15px;font-weight:600}
     p{color:#888;font-size:13px}</style></head>
-    <body><div class="badge">✅ Bot is connected & running!</div><p>Vektra Chat Bot is online.</p></body></html>`);
+    <body><div class="badge">✅ Vektra Chat Bot is running!</div><p>WhatsApp connected. Web API active at /chat</p></body></html>`);
   } else if (latestQR) {
     qrcode.toDataURL(latestQR, { width: 300, margin: 2 }, (err, url) => {
       if (err) { res.end('Error generating QR'); return; }
@@ -337,12 +428,13 @@ const server = http.createServer((req, res) => {
     <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
     .spinner{width:40px;height:40px;border:3px solid #222;border-top-color:#4f7cff;border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}p{color:#888;font-size:13px}</style></head>
-    <body><div class="spinner"></div><p>Starting up... page will refresh automatically</p></body></html>`);
+    <body><div class="spinner"></div><p>Starting up... Web API active at /chat</p></body></html>`);
   }
 });
 
 server.listen(process.env.PORT || 3000, '0.0.0.0', () => {
   console.log('Server running on port', process.env.PORT || 3000);
+  console.log('Web API available at POST /chat');
   connectToWhatsApp();
 });
 
