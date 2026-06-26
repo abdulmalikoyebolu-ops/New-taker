@@ -430,7 +430,7 @@ function hideWelcome() {
   if (w) w.style.display = 'none';
 }
 
-function addMsg(text, role, html, domEl) {
+function addMsg(text, role, html, domEl, bubbleClass) {
   hideWelcome();
   var row = document.createElement('div');
   row.className = 'row ' + role;
@@ -445,7 +445,7 @@ function addMsg(text, role, html, domEl) {
   var col = document.createElement('div');
   col.className = 'bcol';
   var bub = document.createElement('div');
-  bub.className = 'bubble';
+  bub.className = 'bubble' + (bubbleClass ? ' ' + bubbleClass : '');
   if (domEl) bub.appendChild(domEl);
   else if (html) bub.innerHTML = html;
   else bub.textContent = text;
@@ -550,9 +550,20 @@ async function confirmSendImage() {
   document.getElementById('imgpreview').classList.remove('show');
   pendingFile = null;
 
-  var html = '<img src="' + url + '" alt="img" style="max-width:100%;border-radius:12px;display:block;"/>';
-  if (caption) html += '<div style="margin-top:6px;font-size:13px;">' + caption + '</div>';
-  addMsg('', 'user', html);
+  // Build image bubble as DOM element for clean rendering
+  var imgWrap = document.createElement('div');
+  var imgEl = document.createElement('img');
+  imgEl.src = url;
+  imgEl.alt = 'image';
+  imgEl.style.cssText = 'max-width:100%;border-radius:16px;display:block;max-height:400px;object-fit:cover;';
+  imgWrap.appendChild(imgEl);
+  if (caption) {
+    var capEl = document.createElement('div');
+    capEl.style.cssText = 'padding:8px 12px 4px;font-size:13px;color:#fff;';
+    capEl.textContent = caption;
+    imgWrap.appendChild(capEl);
+  }
+  addMsg('', 'user', '', imgWrap, 'img-bubble');
   showTyping();
   busy = true;
   sbtn.disabled = true;
@@ -653,7 +664,8 @@ async function toggleMic() {
         document.getElementById('rectime').textContent = 'Recording... ' + m + ':' + (s < 10 ? '0' : '') + s;
       }, 1000);
     } catch(e) {
-      alert('Microphone access denied. Please allow microphone access.');
+      // Show friendly message instead of alert
+    addMsg('Microphone access denied. To fix this: tap the lock icon in your browser address bar, find Microphone, and set it to Allow. Then refresh the page.', 'bot');
     }
   } else {
     recorder.stop();
