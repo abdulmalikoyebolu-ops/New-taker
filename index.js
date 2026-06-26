@@ -51,7 +51,7 @@ async function askGroq(messages) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-oss-20b',
+        model: 'openai/gpt-oss-20b',
         messages,
         max_tokens: 800,
         temperature: 0.7
