@@ -467,10 +467,13 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        const { type, message, sessionId, time } = JSON.parse(body);
+        const { type, message, comment, sessionId, time } = JSON.parse(body);
         const emoji = type === 'thumbs_up' ? '👍' : '👎';
         const subject = emoji + ' Vektra Feedback: ' + type.replace('_', ' ');
-        const emailBody = 'Feedback Type: ' + emoji + ' ' + type + '\n\nMessage:\n' + message + '\n\nSession: ' + sessionId + '\nTime: ' + time;
+        const emailBody = 'Feedback Type: ' + emoji + ' ' + type.toUpperCase() + '\n\n'
+          + 'User Comment:\n' + (comment || '(no comment left)') + '\n\n'
+          + 'Bot Message:\n' + message + '\n\n'
+          + 'Session: ' + sessionId + '\nTime: ' + time;
 
         // Send via Resend (free email API - 100 emails/day free)
         if (process.env.RESEND_API_KEY) {
