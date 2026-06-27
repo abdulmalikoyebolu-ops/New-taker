@@ -54,7 +54,8 @@ async function askGroq(messages) {
         model: 'openai/gpt-oss-20b',
         messages,
         max_tokens: 800,
-        temperature: 0.7
+        temperature: 0.7,
+        include_reasoning: false
       }),
       signal: controller.signal
     });
@@ -76,7 +77,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'openai/gpt-oss-20b',
       messages: [
         {
           role: 'user',
@@ -399,7 +400,17 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const { image, mimeType, caption, sessionId } = JSON.parse(body);
+        const sid = sessionId || 'default';
+        if (!webSessions[sid]) webSessions[sid] = [];
+
         const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
+
+        // Save image context to session so follow-up questions work
+        const userNote = caption ? 'I sent you an image with caption: ' + caption : 'I sent you an image';
+        webSessions[sid].push({ role: 'user', content: userNote });
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
+        if (webSessions[sid].length > MAX_HISTORY) webSessions[sid] = webSessions[sid].slice(-MAX_HISTORY);
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ reply }));
       } catch (e) {
@@ -448,7 +459,8 @@ const server = http.createServer(async (req, res) => {
         if (webSessions[sid].length > MAX_HISTORY) webSessions[sid] = webSessions[sid].slice(-MAX_HISTORY);
         const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...webSessions[sid]];
         const reply = await askGroq(messages);
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
+        if (webSessions[sid].length > MAX_HISTORY) webSessions[sid] = webSessions[sid].slice(-MAX_HISTORY);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ reply, transcribed: transcribedText }));
