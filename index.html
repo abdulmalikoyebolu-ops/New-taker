@@ -183,40 +183,30 @@ body.light #msginput::placeholder{color:#aaa;}
 #sendbtn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 #sendbtn svg{width:15px;height:15px;pointer-events:none;}
 
-/* Compact recording bar */
-#recoverlay{
-  display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
-  padding:12px 16px;
-  background:rgba(10,10,10,0.95);
-  backdrop-filter:blur(20px);
-  border-top:1px solid rgba(239,68,68,0.3);
-  align-items:center;gap:12px;
-  animation:slideup2 0.2s ease;
+/* Recording row - replaces input row */
+#recrow{
+  display:none;align-items:center;gap:10px;
+  background:rgba(239,68,68,0.06);
+  border:1px solid rgba(239,68,68,0.25);
+  border-radius:26px;padding:8px 10px;
 }
-@keyframes slideup2{from{transform:translateY(100%);}to{transform:translateY(0);}}
-#recoverlay.show{display:flex;}
-body.light #recoverlay{background:rgba(245,245,247,0.97);border-color:rgba(239,68,68,0.3);}
-
-.rec-dot2{width:10px;height:10px;border-radius:50%;background:#ef4444;flex-shrink:0;animation:rpulse 1s infinite;}
+#recrow.show{display:flex;}
+body.light #recrow{background:rgba(239,68,68,0.04);}
+.rec-dot2{width:9px;height:9px;border-radius:50%;background:#ef4444;flex-shrink:0;animation:rpulse 1s infinite;}
 @keyframes rpulse{0%,100%{opacity:1;}50%{opacity:0.2;}}
-
-.rec-timer{font-size:16px;font-weight:600;color:#ef4444;font-variant-numeric:tabular-nums;flex-shrink:0;min-width:44px;}
-
-.rec-wave{display:flex;align-items:center;gap:2px;flex:1;height:32px;}
-.rwb{width:3px;border-radius:3px;background:#ef4444;animation:rwav 0.6s ease-in-out infinite alternate;flex-shrink:0;opacity:0.7;}
-@keyframes rwav{from{height:3px;}to{height:var(--h,20px);}}
+.rec-timer{font-size:15px;font-weight:600;color:#ef4444;font-variant-numeric:tabular-nums;flex-shrink:0;min-width:40px;}
+.rec-wave{display:flex;align-items:center;gap:2px;flex:1;height:28px;overflow:hidden;}
+.rwb{width:3px;border-radius:3px;background:#ef4444;animation:rwav 0.6s ease-in-out infinite alternate;flex-shrink:0;opacity:0.6;}
+@keyframes rwav{from{height:3px;}to{height:var(--h,18px);}}
 .rwb:nth-child(2n){animation-delay:0.15s;}.rwb:nth-child(3n){animation-delay:0.3s;}.rwb:nth-child(4n){animation-delay:0.08s;}
-
-.rec-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.rec-del{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
-body.light .rec-del{background:rgba(0,0,0,0.06);border-color:rgba(0,0,0,0.12);}
-.rec-del:hover{color:#ef4444;border-color:#ef4444;}
-.rec-del svg{width:16px;height:16px;pointer-events:none;}
-.rec-stop{width:44px;height:44px;border-radius:50%;background:#ef4444;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
-.rec-stop svg{width:18px;height:18px;pointer-events:none;}
-.rec-send{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
-.rec-send:hover,.rec-del:hover,.rec-stop:hover{transform:scale(1.06);}
-.rec-send svg{width:18px;height:18px;pointer-events:none;}
+.rec-del{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+body.light .rec-del{background:rgba(0,0,0,0.06);border-color:rgba(0,0,0,0.1);}
+.rec-del:hover{color:#ef4444;}
+.rec-del svg{width:15px;height:15px;pointer-events:none;}
+.rec-stop{width:36px;height:36px;border-radius:50%;background:#ef4444;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.rec-stop svg{width:15px;height:15px;pointer-events:none;}
+.rec-send{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.rec-send svg{width:15px;height:15px;pointer-events:none;}
 
 /* Image preview modal */
 #imgpreview{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;}
@@ -472,24 +462,6 @@ body.light .fb-cancel{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.1);}
       <button class="fb-cancel" onclick="closeFbModal()">Cancel</button>
       <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Send Feedback</button>
     </div>
-  </div>
-</div>
-
-<!-- Compact recording bar -->
-<div id="recoverlay">
-  <div class="rec-dot2"></div>
-  <div class="rec-timer" id="rectime">0:00</div>
-  <div class="rec-wave" id="recwave"></div>
-  <div class="rec-actions">
-    <button class="rec-del" onclick="cancelRec()" title="Cancel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-    </button>
-    <button class="rec-stop" onclick="stopAndSendRec()" title="Stop & Send">
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-    </button>
-    <button class="rec-send" onclick="stopAndSendRec()" title="Send">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
   </div>
 </div>
 
@@ -824,7 +796,8 @@ async function startRec() {
     recorder.start(100);
     recSecs = 0;
     document.getElementById('rectime').textContent = '0:00';
-    document.getElementById('recoverlay').classList.add('show');
+    document.getElementById('recrow').classList.add('show');
+    document.querySelector('.irow').style.display = 'none';
     buildWave();
     recInterval = setInterval(function() {
       recSecs++;
@@ -841,13 +814,15 @@ function cancelRec() {
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   if (recStream) recStream.getTracks().forEach(function(t) { t.stop(); });
   clearInterval(recInterval);
-  document.getElementById('recoverlay').classList.remove('show');
+  document.getElementById('recrow').classList.remove('show');
+  document.querySelector('.irow').style.display = 'flex';
   recChunks = []; recorder = null; recStream = null;
 }
 
 function stopAndSendRec() {
   clearInterval(recInterval);
-  document.getElementById('recoverlay').classList.remove('show');
+  document.getElementById('recrow').classList.remove('show');
+  document.querySelector('.irow').style.display = 'flex';
   if (recStream) recStream.getTracks().forEach(function(t) { t.stop(); });
   if (recorder && recorder.state !== 'inactive') {
     recorder.onstop = function() { processVoice(); };
@@ -953,4 +928,4 @@ function clearChat() {
 
 </div>
 </body>
-          </html>
+        </html>
