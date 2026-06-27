@@ -273,6 +273,54 @@ body.light .side-footer{border-color:rgba(0,0,0,0.08);}
 .side-brand-name{font-size:13px;font-weight:600;color:#f0f0f8;}
 body.light .side-brand-name{color:#111;}
 .side-brand-sub{font-size:11px;color:#555;}
+
+/* Feedback modal */
+#fbmodal {
+  display:none;position:fixed;inset:0;z-index:400;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
+}
+#fbmodal.show{display:flex;}
+.fb-box {
+  background:#111;border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;padding:20px;width:100%;max-width:380px;
+  display:flex;flex-direction:column;gap:14px;
+  animation:dropin 0.2s ease;
+}
+body.light .fb-box{background:#fff;border-color:rgba(0,0,0,0.1);}
+.fb-box-header{display:flex;align-items:center;gap:10px;}
+.fb-box-emoji{font-size:22px;}
+.fb-box-title{font-size:15px;font-weight:600;color:#f0f0f8;}
+body.light .fb-box-title{color:#111;}
+.fb-box-sub{font-size:12px;color:#666;margin-top:1px;}
+.fb-textarea {
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;padding:12px 14px;
+  color:#f0f0f8;font-family:inherit;font-size:14px;
+  outline:none;resize:none;width:100%;line-height:1.5;
+  transition:border-color 0.2s;
+}
+body.light .fb-textarea{background:#f5f5f7;border-color:rgba(0,0,0,0.1);color:#111;}
+.fb-textarea:focus{border-color:rgba(59,130,246,0.4);}
+.fb-textarea::placeholder{color:#444;}
+body.light .fb-textarea::placeholder{color:#bbb;}
+.fb-actions{display:flex;gap:8px;}
+.fb-cancel{
+  flex:1;padding:10px;border-radius:12px;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+  color:#888;font-family:inherit;font-size:13px;cursor:pointer;transition:all 0.2s;
+}
+body.light .fb-cancel{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.1);}
+.fb-cancel:hover{border-color:rgba(255,255,255,0.2);color:#ccc;}
+.fb-submit{
+  flex:2;padding:10px;border-radius:12px;
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
+  border:none;color:#fff;font-family:inherit;
+  font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;
+}
+.fb-submit:hover{opacity:0.9;transform:scale(1.02);}
+.fb-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 </style>
 </head>
 <body>
@@ -395,6 +443,24 @@ body.light .side-brand-name{color:#111;}
 
 </div>
 
+<!-- Feedback modal -->
+<div id="fbmodal">
+  <div class="fb-box">
+    <div class="fb-box-header">
+      <div class="fb-box-emoji" id="fb-emoji">👍</div>
+      <div>
+        <div class="fb-box-title" id="fb-title">What did you like?</div>
+        <div class="fb-box-sub">Your feedback goes directly to the developer</div>
+      </div>
+    </div>
+    <textarea class="fb-textarea" id="fb-text" rows="4" placeholder="Tell us what you think... (optional)"></textarea>
+    <div class="fb-actions">
+      <button class="fb-cancel" onclick="closeFbModal()">Cancel</button>
+      <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Send Feedback</button>
+    </div>
+  </div>
+</div>
+
 <!-- Recording overlay -->
 <div id="recoverlay">
   <div class="rec-top">
@@ -477,7 +543,7 @@ function hideWelcome() { var w = document.getElementById('welcome'); if (w) w.st
 function copyText(btn, text) {
   navigator.clipboard.writeText(text).then(function() {
     btn.classList.add('copied');
-    btn.querySelector('span').textContent = 'Copied';
+    btn.querySelector('span').textContent = 'Copied!';
     setTimeout(function() {
       btn.classList.remove('copied');
       btn.querySelector('span').textContent = 'Copy';
@@ -487,13 +553,62 @@ function copyText(btn, text) {
   });
 }
 
-function sendFeedback(type, msgText) {
-  // Send feedback via backend email endpoint
-  fetch(API + '/feedback', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({type: type, message: msgText, sessionId: SID, time: new Date().toISOString()})
-  }).catch(function(){});
+// Feedback modal state
+var fbType = '';
+var fbMsgText = '';
+var fbLikeBtn = null;
+var fbDislikeBtn = null;
+
+function openFbModal(type, msgText, likeBtn, dislikeBtn) {
+  fbType = type;
+  fbMsgText = msgText;
+  fbLikeBtn = likeBtn;
+  fbDislikeBtn = dislikeBtn;
+  var isLike = type === 'thumbs_up';
+  document.getElementById('fb-emoji').textContent = isLike ? '👍' : '👎';
+  document.getElementById('fb-title').textContent = isLike ? 'What did you like?' : 'What can be improved?';
+  document.getElementById('fb-text').value = '';
+  document.getElementById('fb-submit-btn').disabled = false;
+  document.getElementById('fb-submit-btn').textContent = 'Send Feedback';
+  document.getElementById('fbmodal').classList.add('show');
+  setTimeout(function(){ document.getElementById('fb-text').focus(); }, 100);
+}
+
+function closeFbModal() {
+  document.getElementById('fbmodal').classList.remove('show');
+}
+
+async function submitFeedback() {
+  var comment = document.getElementById('fb-text').value.trim();
+  var submitBtn = document.getElementById('fb-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+
+  try {
+    await fetch(API + '/feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        type: fbType,
+        message: fbMsgText,
+        comment: comment,
+        sessionId: SID,
+        time: new Date().toISOString()
+      })
+    });
+  } catch(e) {}
+
+  // Update button state
+  if (fbType === 'thumbs_up' && fbLikeBtn) {
+    fbLikeBtn.classList.add('liked');
+    if (fbDislikeBtn) fbDislikeBtn.classList.remove('disliked');
+  } else if (fbDislikeBtn) {
+    fbDislikeBtn.classList.add('disliked');
+    if (fbLikeBtn) fbLikeBtn.classList.remove('liked');
+  }
+
+  submitBtn.textContent = 'Sent!';
+  setTimeout(function(){ closeFbModal(); }, 600);
 }
 
 function addFeedback(col, msgText) {
@@ -512,9 +627,7 @@ function addFeedback(col, msgText) {
   likeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg><span></span>';
   likeBtn.onclick = function() {
     if (likeBtn.classList.contains('liked')) return;
-    likeBtn.classList.add('liked');
-    dislikeBtn.classList.remove('disliked');
-    sendFeedback('thumbs_up', msgText);
+    openFbModal('thumbs_up', msgText, likeBtn, dislikeBtn);
   };
 
   // Thumbs down
@@ -523,9 +636,7 @@ function addFeedback(col, msgText) {
   dislikeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg><span></span>';
   dislikeBtn.onclick = function() {
     if (dislikeBtn.classList.contains('disliked')) return;
-    dislikeBtn.classList.add('disliked');
-    likeBtn.classList.remove('liked');
-    sendFeedback('thumbs_down', msgText);
+    openFbModal('thumbs_down', msgText, likeBtn, dislikeBtn);
   };
 
   fb.appendChild(copyBtn);
@@ -815,4 +926,4 @@ function clearChat() {
 
 </div>
 </body>
-        </html>
+  </html>
