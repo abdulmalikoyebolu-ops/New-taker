@@ -461,6 +461,45 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── POST /feedback — Send feedback email via EmailJS ──
+  if (req.method === 'POST' && req.url === '/feedback') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { type, message, sessionId, time } = JSON.parse(body);
+        const emoji = type === 'thumbs_up' ? '👍' : '👎';
+        const subject = emoji + ' Vektra Feedback: ' + type.replace('_', ' ');
+        const emailBody = 'Feedback Type: ' + emoji + ' ' + type + '\n\nMessage:\n' + message + '\n\nSession: ' + sessionId + '\nTime: ' + time;
+
+        // Send via Resend (free email API - 100 emails/day free)
+        if (process.env.RESEND_API_KEY) {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: 'Vektra Bot <onboarding@resend.dev>',
+              to: ['abdulmalikoyebolu3@gmail.com'],
+              subject: subject,
+              text: emailBody
+            })
+          });
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        console.error('Feedback error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed' }));
+      }
+    });
+    return;
+  }
+
   // ── GET /status — Health check ──
   if (req.method === 'GET' && req.url === '/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
