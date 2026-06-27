@@ -147,8 +147,7 @@ body.light .btime{color:#aaa;}
 .row.user .btime{text-align:right;}
 
 /* Feedback buttons */
-.feedback{display:flex;align-items:center;gap:4px;margin-top:4px;padding:0 4px;opacity:0;transition:opacity 0.2s;}
-.row.bot:hover .feedback{opacity:1;}
+.feedback{display:flex;align-items:center;gap:4px;margin-top:6px;padding:0 4px;}
 .fbtn{background:none;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#555;cursor:pointer;padding:4px 8px;font-size:12px;display:flex;align-items:center;gap:4px;transition:all 0.2s;font-family:inherit;}
 body.light .fbtn{border-color:rgba(0,0,0,0.08);color:#aaa;}
 .fbtn:hover{border-color:rgba(59,130,246,0.4);color:#3b82f6;background:rgba(59,130,246,0.06);}
@@ -184,31 +183,40 @@ body.light #msginput::placeholder{color:#aaa;}
 #sendbtn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 #sendbtn svg{width:15px;height:15px;pointer-events:none;}
 
-/* Recording fullscreen overlay */
-#recoverlay{display:none;position:fixed;inset:0;z-index:200;background:#000;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:50px;}
+/* Compact recording bar */
+#recoverlay{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+  padding:12px 16px;
+  background:rgba(10,10,10,0.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid rgba(239,68,68,0.3);
+  align-items:center;gap:12px;
+  animation:slideup2 0.2s ease;
+}
+@keyframes slideup2{from{transform:translateY(100%);}to{transform:translateY(0);}}
 #recoverlay.show{display:flex;}
-body.light #recoverlay{background:#f5f5f7;}
-.rec-top{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;}
-.rec-label{font-size:13px;color:#ef4444;font-weight:600;display:flex;align-items:center;gap:8px;letter-spacing:0.05em;text-transform:uppercase;}
-.rec-dot2{width:8px;height:8px;border-radius:50%;background:#ef4444;animation:rpulse 1s infinite;}
+body.light #recoverlay{background:rgba(245,245,247,0.97);border-color:rgba(239,68,68,0.3);}
+
+.rec-dot2{width:10px;height:10px;border-radius:50%;background:#ef4444;flex-shrink:0;animation:rpulse 1s infinite;}
 @keyframes rpulse{0%,100%{opacity:1;}50%{opacity:0.2;}}
-.rec-timer{font-size:56px;font-weight:200;letter-spacing:3px;color:#f0f0f8;font-variant-numeric:tabular-nums;}
-body.light .rec-timer{color:#111;}
-.rec-wave{display:flex;align-items:center;gap:3px;height:56px;}
-.rwb{width:3px;border-radius:3px;background:#ef4444;animation:rwav 0.6s ease-in-out infinite alternate;flex-shrink:0;}
-@keyframes rwav{from{height:4px;opacity:0.3;}to{height:var(--h,24px);opacity:1;}}
+
+.rec-timer{font-size:16px;font-weight:600;color:#ef4444;font-variant-numeric:tabular-nums;flex-shrink:0;min-width:44px;}
+
+.rec-wave{display:flex;align-items:center;gap:2px;flex:1;height:32px;}
+.rwb{width:3px;border-radius:3px;background:#ef4444;animation:rwav 0.6s ease-in-out infinite alternate;flex-shrink:0;opacity:0.7;}
+@keyframes rwav{from{height:3px;}to{height:var(--h,20px);}}
 .rwb:nth-child(2n){animation-delay:0.15s;}.rwb:nth-child(3n){animation-delay:0.3s;}.rwb:nth-child(4n){animation-delay:0.08s;}
-.rec-actions{display:flex;align-items:center;gap:44px;}
-.rec-del{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
+
+.rec-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.rec-del{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
 body.light .rec-del{background:rgba(0,0,0,0.06);border-color:rgba(0,0,0,0.12);}
 .rec-del:hover{color:#ef4444;border-color:#ef4444;}
-.rec-del svg{width:22px;height:22px;pointer-events:none;}
-.rec-stop{width:72px;height:72px;border-radius:50%;background:#ef4444;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;animation:rglow 1.5s infinite;}
-@keyframes rglow{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4);}50%{box-shadow:0 0 0 14px rgba(239,68,68,0);}}
-.rec-stop svg{width:28px;height:28px;pointer-events:none;}
-.rec-send{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
+.rec-del svg{width:16px;height:16px;pointer-events:none;}
+.rec-stop{width:44px;height:44px;border-radius:50%;background:#ef4444;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
+.rec-stop svg{width:18px;height:18px;pointer-events:none;}
+.rec-send{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
 .rec-send:hover,.rec-del:hover,.rec-stop:hover{transform:scale(1.06);}
-.rec-send svg{width:22px;height:22px;pointer-events:none;}
+.rec-send svg{width:18px;height:18px;pointer-events:none;}
 
 /* Image preview modal */
 #imgpreview{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;}
@@ -322,6 +330,7 @@ body.light .fb-cancel{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.1);}
 .fb-submit:hover{opacity:0.9;transform:scale(1.02);}
 .fb-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -407,6 +416,11 @@ body.light .fb-cancel{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.1);}
       <div class="side-item-text"><div class="side-item-title">Web Search</div><div class="side-item-sub">Search the internet</div></div>
     </button>
     <div class="side-divider"></div>
+    <button class="side-item" onclick="closeSidePanel();doSignOut()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <div class="side-item-text"><div class="side-item-title">Sign Out</div><div class="side-item-sub">Log out of your account</div></div>
+    </button>
+    <div class="side-divider"></div>
     <div class="side-section-label">Info</div>
     <button class="side-item" onclick="showAbout()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -461,21 +475,19 @@ body.light .fb-cancel{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.1);}
   </div>
 </div>
 
-<!-- Recording overlay -->
+<!-- Compact recording bar -->
 <div id="recoverlay">
-  <div class="rec-top">
-    <div class="rec-label"><div class="rec-dot2"></div>Recording</div>
-    <div class="rec-timer" id="rectime">0:00</div>
-    <div class="rec-wave" id="recwave"></div>
-  </div>
+  <div class="rec-dot2"></div>
+  <div class="rec-timer" id="rectime">0:00</div>
+  <div class="rec-wave" id="recwave"></div>
   <div class="rec-actions">
-    <button class="rec-del" onclick="cancelRec()">
+    <button class="rec-del" onclick="cancelRec()" title="Cancel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
     </button>
-    <button class="rec-stop" onclick="stopAndSendRec()">
+    <button class="rec-stop" onclick="stopAndSendRec()" title="Stop & Send">
       <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
     </button>
-    <button class="rec-send" onclick="stopAndSendRec()">
+    <button class="rec-send" onclick="stopAndSendRec()" title="Send">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
@@ -578,27 +590,42 @@ function closeFbModal() {
   document.getElementById('fbmodal').classList.remove('show');
 }
 
+// EmailJS config - initialized on load
+var EMAILJS_READY = false;
+window.addEventListener('load', function() {
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init({ publicKey: 'YOUR_EMAILJS_PUBLIC_KEY' });
+    EMAILJS_READY = true;
+  }
+});
+
 async function submitFeedback() {
   var comment = document.getElementById('fb-text').value.trim();
   var submitBtn = document.getElementById('fb-submit-btn');
   submitBtn.disabled = true;
   submitBtn.textContent = 'Sending...';
 
-  try {
-    await fetch(API + '/feedback', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        type: fbType,
-        message: fbMsgText,
-        comment: comment,
-        sessionId: SID,
-        time: new Date().toISOString()
-      })
-    });
-  } catch(e) {}
+  var emoji = fbType === 'thumbs_up' ? '👍' : '👎';
 
-  // Update button state
+  try {
+    if (EMAILJS_READY) {
+      await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
+        feedback_type: emoji + ' ' + fbType.replace('_', ' ').toUpperCase(),
+        user_comment: comment || '(no comment)',
+        bot_message: fbMsgText,
+        session_id: SID,
+        sent_time: new Date().toLocaleString()
+      });
+    } else {
+      // Fallback to backend
+      await fetch(API + '/feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({type: fbType, message: fbMsgText, comment: comment, sessionId: SID, time: new Date().toISOString()})
+      });
+    }
+  } catch(e) { console.log('Feedback send error:', e); }
+
   if (fbType === 'thumbs_up' && fbLikeBtn) {
     fbLikeBtn.classList.add('liked');
     if (fbDislikeBtn) fbDislikeBtn.classList.remove('disliked');
@@ -607,8 +634,8 @@ async function submitFeedback() {
     if (fbLikeBtn) fbLikeBtn.classList.remove('liked');
   }
 
-  submitBtn.textContent = 'Sent!';
-  setTimeout(function(){ closeFbModal(); }, 600);
+  submitBtn.textContent = 'Sent! ✓';
+  setTimeout(function(){ closeFbModal(); }, 700);
 }
 
 function addFeedback(col, msgText) {
@@ -779,7 +806,7 @@ async function confirmSendImage() {
 function buildWave() {
   var wave = document.getElementById('recwave');
   wave.innerHTML = '';
-  var heights = [8,16,28,40,50,40,28,16,8,20,36,48,36,20,8,24,42,52,42,24,8,18,32,44,32,18,8,14,26,38];
+  var heights = [6,10,16,22,28,22,16,10,6,12,20,26,20,12,6,14,24,30,24,14,6,10,18,24,18,10,6,8,14,20];
   for (var i = 0; i < 30; i++) {
     var d = document.createElement('div');
     d.className = 'rwb';
@@ -926,4 +953,4 @@ function clearChat() {
 
 </div>
 </body>
-  </html>
+          </html>
