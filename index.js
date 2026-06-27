@@ -77,7 +77,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'openai/gpt-oss-20b',
+      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       messages: [
         {
           role: 'user',
