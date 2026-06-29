@@ -862,7 +862,14 @@ function resizeInp(el) { el.style.height = 'auto'; el.style.height = Math.min(el
 function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sbtn.disabled) sendMsg(); } }
 function getTime() { return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
 function getLogo() { return document.getElementById('logoimg').src; }
-function hideWelcome() { var w = document.getElementById('welcome'); if (w) w.style.display = 'none'; var s = document.getElementById('sugCards'); if(s) { s.style.transition='opacity .3s ease'; s.style.opacity='0'; setTimeout(function(){s.style.display='none';},300); } }
+function hideWelcome() {
+  var w = document.getElementById('welcome');
+  if(w && w.style.display !== 'none'){
+    w.style.transition = 'opacity .25s ease';
+    w.style.opacity = '0';
+    setTimeout(function(){ w.style.display = 'none'; }, 250);
+  }
+}
 
 function sendChip(el) {
   var txt = typeof el === 'string' ? el : el.textContent;
@@ -1081,12 +1088,31 @@ async function processVoice() {
 
 function clearChat() {
   fetch(API+'/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:SID})}).catch(function(){});
-  msgs.innerHTML = '';
-  // Reveal footer suggestions with fade-in
+
+  // Remove only message rows, keep #welcome intact
+  var children = Array.prototype.slice.call(msgs.children);
+  children.forEach(function(child){
+    if(child.id !== 'welcome') child.remove();
+  });
+
+  // Restore welcome visibility
+  var w = document.getElementById('welcome');
+  if(w){ w.style.display = 'flex'; }
+
+  // Re-animate suggestion cards
   var s = document.getElementById('sugCards');
-  if(s){ s.style.display='flex'; s.style.opacity='0'; s.style.transition='none';
-    setTimeout(function(){ s.style.transition='opacity .4s ease'; s.style.opacity='1'; },50); }
+  if(s){
+    s.style.display = 'flex';
+    s.style.opacity = '0';
+    s.style.transition = 'none';
+    // Reset each card animation
+    var cards = s.querySelectorAll('.sug-item');
+    cards.forEach(function(c){ c.classList.remove('anim'); void c.offsetWidth; c.classList.add('anim'); });
+    setTimeout(function(){ s.style.transition='opacity .4s ease'; s.style.opacity='1'; }, 50);
+  }
+
+  document.getElementById('msgsOuter').scrollTop = 0;
 }
 </script>
 </body>
-          </html>
+            </html>
