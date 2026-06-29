@@ -249,6 +249,8 @@ body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
   width:100%;max-width:700px;
   padding:24px 20px 8px;
   display:flex;flex-direction:column;gap:14px;
+  flex:1; /* stretch to fill msgs-outer */
+  min-height:100%;
 }
 
 /* ── Welcome ── */
@@ -257,19 +259,24 @@ body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
   justify-content:center;
   align-items:center;
   flex:1;
-  padding:0;
-  /* suggestions live in footer, this is empty */
+  padding:40px 0;
+  width:100%;
+  min-height:100%; /* stretch to fill msgs-outer */
 }
 @keyframes fadein{to{opacity:1;}}
 @keyframes cardup{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
 
-/* ── Suggestion cards — horizontal scroll ── */
+/* ── Suggestion cards — desktop: centered, mobile: bottom ── */
 .suggestions{
   display:flex;flex-direction:row;
   gap:12px;
-  padding:0 16px 16px;
+  padding:0 20px 8px;
+  justify-content:center;
+  flex-wrap:wrap;
   width:100%;
-  overflow-x:auto;
+  max-width:780px;
+  margin:0 auto;
+  overflow-x:visible;
   overflow-y:hidden;
   scrollbar-width:none;
   -ms-overflow-style:none;
@@ -517,10 +524,23 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
   #msgs{padding:16px 12px 6px;gap:10px;}
   .bcol{max-width:88%;}
 
-  /* Welcome screen */
-  .welcome{padding:0 0 14px;}
-  .suggestions{padding:0 14px 6px;gap:10px;}
-  .sug-item{width:130px;height:130px;padding:15px 14px 15px;border-radius:18px;}
+  /* Welcome screen — mobile: cards at bottom */
+  .welcome{
+    padding:0;
+    justify-content:flex-end;
+    padding-bottom:12px;
+    min-height:0;
+  }
+  .suggestions{
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    padding:0 14px 4px;
+    gap:10px;
+    max-width:100%;
+    width:100%;
+  }
+  .sug-item{width:130px;height:130px;padding:15px 14px;border-radius:18px;flex-shrink:0;}
   .sug-icon{width:36px;height:36px;border-radius:10px;}
   .sug-icon svg{width:18px;height:18px;}
   .sug-title{font-size:12.5px;}
@@ -674,15 +694,8 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
   <!-- Messages -->
   <div class="msgs-outer" id="msgsOuter">
     <div id="msgs">
-      <div class="welcome" id="welcome"></div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="footer-wrap">
-
-    <!-- Suggestion cards — shown only on welcome screen -->
-    <div class="suggestions" id="sugCards">
+      <div class="welcome" id="welcome">
+        <div class="suggestions" id="sugCards">
       <button class="sug-item" onclick="sendMsg('Search the web for latest news')">
         <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
         <div class="sug-texts"><span class="sug-title">Search the web</span><span class="sug-sub">Get real-time info</span></div>
@@ -704,6 +717,14 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
         <div class="sug-texts"><span class="sug-title">Voice message</span><span class="sug-sub">Speak to Vectra</span></div>
       </button>
     </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-wrap">
+
+
     <div class="footer-inner">
       <div id="recrow">
         <div class="rec-dot"></div>
@@ -1072,4 +1093,4 @@ function clearChat() {
 }
 </script>
 </body>
-  </html>
+</html>
