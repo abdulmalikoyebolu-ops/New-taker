@@ -227,6 +227,21 @@ body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
   flex:1;overflow-y:auto;
   display:flex;flex-direction:column;align-items:center;
   padding-top:68px; /* space for floating topbar */
+  /* fade top edge so messages dissolve under the topbar */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 60px,
+    black 110px,
+    black calc(100% - 0px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 60px,
+    black 110px,
+    black calc(100% - 0px)
+  );
 }
 .msgs-outer::-webkit-scrollbar{width:4px;}
 .msgs-outer::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:4px;}
@@ -1057,4 +1072,4 @@ function clearChat() {
 }
 </script>
 </body>
-                                </html>
+  </html>
