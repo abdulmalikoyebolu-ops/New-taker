@@ -256,33 +256,35 @@ body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
 /* ── Welcome ── */
 .welcome{
   display:flex;flex-direction:column;
-  justify-content:center;
+  justify-content:flex-end;  /* push to bottom */
   align-items:center;
   flex:1;
-  padding:40px 0;
+  padding:0 0 32px 0;
   width:100%;
-  min-height:100%; /* stretch to fill msgs-outer */
 }
 @keyframes fadein{to{opacity:1;}}
 @keyframes cardup{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
 
-/* ── Suggestion cards — single row desktop, scroll mobile ── */
+/* ── Suggestion cards ── */
 .suggestions{
   display:flex;flex-direction:row;
   flex-wrap:nowrap;
-  gap:12px;
-  padding:0 20px 8px;
+  gap:14px;
+  padding:0 24px 4px;
   justify-content:center;
   align-items:stretch;
   width:100%;
-  max-width:860px;
+  max-width:900px;
   margin:0 auto;
-  overflow-x:auto;
-  scrollbar-width:none;
-  -ms-overflow-style:none;
+  overflow:visible; /* NO clipping on desktop */
   box-sizing:border-box;
 }
-.suggestions::-webkit-scrollbar{display:none;}
+/* stagger animations */
+.sug-item:nth-child(1){animation:cardup .35s ease .05s both;}
+.sug-item:nth-child(2){animation:cardup .35s ease .12s both;}
+.sug-item:nth-child(3){animation:cardup .35s ease .19s both;}
+.sug-item:nth-child(4){animation:cardup .35s ease .26s both;}
+.sug-item:nth-child(5){animation:cardup .35s ease .33s both;}
 /* stagger fade-up on each card */
 .sug-item:nth-child(1){animation:cardup .35s ease .05s both;}
 .sug-item:nth-child(2){animation:cardup .35s ease .12s both;}
@@ -294,14 +296,14 @@ body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
 .sug-item{
   display:flex;flex-direction:column;align-items:flex-start;
   justify-content:space-between;
-  padding:16px 14px 16px;
+  padding:18px 16px 18px;
   border-radius:20px;
   background:rgba(255,255,255,0.06);
   border:1px solid rgba(255,255,255,0.09);
   box-shadow:0 6px 24px rgba(0,0,0,0.35),0 1px 4px rgba(0,0,0,0.2);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   cursor:pointer;
-  width:150px;height:150px;flex-shrink:0;
+  width:160px;height:160px;flex-shrink:0;
   text-align:left;font-family:inherit;
   transition:transform .22s cubic-bezier(.34,1.56,.64,1),
              box-shadow .22s ease,
@@ -524,26 +526,22 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
   #msgs{padding:16px 12px 6px;gap:10px;}
   .bcol{max-width:88%;}
 
-  /* Welcome screen — mobile: cards at bottom */
-  .welcome{
-    padding:0;
-    justify-content:flex-end;
-    padding-bottom:12px;
-    min-height:0;
-  }
+  /* Mobile: cards at bottom, horizontal scroll */
+  .welcome{padding:0 0 14px;justify-content:flex-end;}
   .suggestions{
-    overflow-x:auto;
+    overflow-x:auto;overflow-y:hidden;
     flex-wrap:nowrap;
     justify-content:flex-start;
     padding:0 14px 4px;
     gap:10px;
-    max-width:100%;
-    width:100%;
+    max-width:100%;width:100%;
+    scrollbar-width:none;
   }
-  .sug-item{width:130px;height:130px;padding:15px 14px;border-radius:18px;flex-shrink:0;}
-  .sug-icon{width:36px;height:36px;border-radius:10px;}
-  .sug-icon svg{width:18px;height:18px;}
-  .sug-title{font-size:12.5px;}
+  .suggestions::-webkit-scrollbar{display:none;}
+  .sug-item{width:128px;height:128px;padding:14px 13px;border-radius:18px;flex-shrink:0;}
+  .sug-icon{width:34px;height:34px;border-radius:10px;}
+  .sug-icon svg{width:16px;height:16px;}
+  .sug-title{font-size:12px;}
   .sug-sub{font-size:11px;}
   .msgs-outer{padding-top:60px;}
 
