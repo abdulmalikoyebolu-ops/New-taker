@@ -170,44 +170,63 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .user-dots svg{width:15px;height:15px;}
 
 /* ─── MAIN ─── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative;}
 
-/* Topbar */
+/* Topbar — truly floating over content */
 .topbar{
   display:flex;align-items:center;justify-content:flex-end;
-  padding:10px 18px;gap:10px;
-  border-bottom:1px solid var(--sb-border);
-  flex-shrink:0;background:var(--bg);
-  transition:background .3s,border-color .3s;
+  padding:14px 16px 10px;gap:10px;
+  flex-shrink:0;
+  background:transparent;
+  border:none;
+  position:absolute;top:0;right:0;left:0;
+  z-index:20;
+  pointer-events:none; /* let clicks through the gap */
 }
+/* but buttons still clickable */
+.topbar > *{pointer-events:all;}
 .topbar-left{display:none;margin-right:auto;align-items:center;gap:10px;}
 @media(max-width:768px){.topbar-left{display:flex;}}
 .topbar-brand{display:none;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text);}
 @media(max-width:768px){.topbar-brand{display:flex;}}
 .topbar-brand img{width:22px;height:22px;object-fit:contain;}
 .icon-btn{
-  width:34px;height:34px;border-radius:50%;
-  background:var(--surface);border:1px solid var(--border);
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(30,30,42,0.88);
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 4px 16px rgba(0,0,0,0.35);
   color:var(--text-muted);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   transition:all .2s;flex-shrink:0;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
-.icon-btn:hover{background:var(--surface-h);color:var(--text);}
+body.light .icon-btn{
+  background:rgba(255,255,255,0.92);border-color:rgba(0,0,0,0.1);
+  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+}
+.icon-btn:hover{background:rgba(50,50,66,0.95);color:var(--text);transform:scale(1.05);}
+body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
+.icon-btn:active{transform:scale(0.95);}
 .icon-btn svg{width:16px;height:16px;pointer-events:none;}
 .plus-btn{
-  display:flex;align-items:center;gap:6px;
-  padding:7px 16px;border-radius:20px;
-  background:var(--accent);border:none;
+  display:flex;align-items:center;gap:7px;
+  padding:8px 18px;border-radius:999px;
+  background:rgba(124,58,237,0.92);
+  border:1px solid rgba(124,58,237,0.5);
+  box-shadow:0 4px 18px rgba(124,58,237,0.4);
   color:#fff;font-family:inherit;font-size:13px;font-weight:600;
-  cursor:pointer;transition:opacity .2s;
+  cursor:pointer;transition:all .2s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
-.plus-btn:hover{opacity:.88;}
+.plus-btn:hover{background:rgba(124,58,237,1);box-shadow:0 6px 24px rgba(124,58,237,0.55);transform:scale(1.03);}
+.plus-btn:active{transform:scale(0.97);}
 .plus-btn svg{width:13px;height:13px;}
 
 /* ─── MESSAGES ─── */
 .msgs-outer{
   flex:1;overflow-y:auto;
   display:flex;flex-direction:column;align-items:center;
+  padding-top:68px; /* space for floating topbar */
 }
 .msgs-outer::-webkit-scrollbar{width:4px;}
 .msgs-outer::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:4px;}
@@ -220,46 +239,91 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 /* ── Welcome ── */
 .welcome{
   display:flex;flex-direction:column;
-  justify-content:flex-end;
+  justify-content:center;
+  align-items:center;
   flex:1;
-  padding:0 0 28px 0;
-  opacity:0;animation:fadein .4s ease forwards;
+  padding:0;
+  /* suggestions live in footer, this is empty */
 }
 @keyframes fadein{to{opacity:1;}}
+@keyframes cardup{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
 
-/* Suggestion rows — icon + text, left aligned, bottom of screen */
+/* ── Suggestion cards — horizontal scroll ── */
 .suggestions{
-  display:flex;flex-direction:column;
-  gap:0;
-  padding:0 20px;
-  width:100%;max-width:680px;
-  margin:0 auto;
+  display:flex;flex-direction:row;
+  gap:12px;
+  padding:0 16px 16px;
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  box-sizing:border-box;
 }
+.suggestions::-webkit-scrollbar{display:none;}
+/* stagger fade-up on each card */
+.sug-item:nth-child(1){animation:cardup .35s ease .05s both;}
+.sug-item:nth-child(2){animation:cardup .35s ease .12s both;}
+.sug-item:nth-child(3){animation:cardup .35s ease .19s both;}
+.sug-item:nth-child(4){animation:cardup .35s ease .26s both;}
+.sug-item:nth-child(5){animation:cardup .35s ease .33s both;}
+@keyframes cardup{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
 .sug-item{
-  display:flex;align-items:center;gap:16px;
-  padding:16px 4px;
-  border-bottom:1px solid rgba(255,255,255,0.07);
-  cursor:pointer;transition:opacity .15s;
-  background:none;border-left:none;border-right:none;border-top:none;
-  width:100%;text-align:left;font-family:inherit;
+  display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:space-between;
+  padding:18px 16px 18px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.09);
+  box-shadow:0 6px 24px rgba(0,0,0,0.35),0 1px 4px rgba(0,0,0,0.2);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  cursor:pointer;
+  width:150px;height:150px;flex-shrink:0;
+  text-align:left;font-family:inherit;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),
+             box-shadow .22s ease,
+             border-color .22s ease;
 }
-body.light .sug-item{border-bottom-color:rgba(0,0,0,0.07);}
-.sug-item:first-child{border-top:1px solid rgba(255,255,255,0.07);}
-body.light .sug-item:first-child{border-top-color:rgba(0,0,0,0.07);}
-.sug-item:hover{opacity:.7;}
+body.light .sug-item{
+  background:rgba(255,255,255,0.95);
+  border-color:rgba(0,0,0,0.07);
+  box-shadow:0 4px 18px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.05);
+}
+.sug-item:hover{
+  transform:translateY(-4px) scale(1.03);
+  box-shadow:0 12px 32px rgba(0,0,0,0.45),0 2px 8px rgba(124,58,237,0.15);
+  border-color:rgba(124,58,237,0.3);
+}
+body.light .sug-item:hover{
+  box-shadow:0 8px 24px rgba(0,0,0,0.1),0 2px 8px rgba(124,58,237,0.12);
+  border-color:rgba(124,58,237,0.25);
+}
+.sug-item:active{transform:scale(0.96);}
+
+/* icon sits at top */
 .sug-icon{
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(255,255,255,0.07);
+  width:40px;height:40px;border-radius:12px;
+  background:rgba(124,58,237,0.14);
+  border:none;
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
+  flex-shrink:0;margin-bottom:auto;
 }
-body.light .sug-icon{background:rgba(0,0,0,0.06);}
-.sug-icon svg{width:18px;height:18px;color:var(--text-muted);pointer-events:none;}
-.sug-text{
-  font-size:15px;font-weight:500;
-  color:var(--text);line-height:1.3;
+body.light .sug-icon{background:rgba(124,58,237,0.1);}
+.sug-icon svg{width:20px;height:20px;stroke:var(--accent-l);pointer-events:none;}
+
+/* text sits at bottom */
+.sug-texts{display:flex;flex-direction:column;gap:4px;width:100%;}
+.sug-title{
+  font-size:13.5px;font-weight:700;
+  color:var(--text);line-height:1.25;
 }
-body.light .sug-text{color:#222;}
+body.light .sug-title{color:#111;}
+.sug-sub{
+  font-size:11.5px;font-weight:400;
+  color:var(--text-muted);line-height:1.3;
+}
+body.light .sug-sub{color:#888;}
 
 /* Bubbles */
 .row{display:flex;gap:10px;opacity:0;animation:slideup .25s ease forwards;}
@@ -315,74 +379,113 @@ body.light .sug-text{color:#222;}
 .rec-send{width:32px;height:32px;border-radius:50%;background:var(--accent);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
 .rec-send svg{width:14px;height:14px;pointer-events:none;}
 
-/* ── Input bar ── */
+/* ── Floating input bar ── */
 .footer-wrap{
   flex-shrink:0;
-  padding:12px 20px 16px;
+  padding:8px 16px 20px;
   display:flex;flex-direction:column;align-items:center;
-  background:var(--bg);transition:background .3s;
+  background:transparent; /* NO background bar — floating look */
+  position:relative;
+  z-index:10;
 }
-.footer-inner{width:100%;max-width:680px;}
-.footer-hint{text-align:center;font-size:11.5px;color:var(--text-sub);padding-top:10px;}
+.footer-inner{width:100%;max-width:660px;}
+.footer-hint{text-align:center;font-size:11px;color:var(--text-sub);padding-top:8px;opacity:.7;}
 
+/* Floating pill */
 .input-wrap{
-  background:rgba(255,255,255,0.06);
+  background:rgba(28,28,40,0.93);
   border:1px solid rgba(255,255,255,0.1);
-  border-radius:20px;
-  padding:10px 10px 10px 18px;
-  display:flex;align-items:center;gap:4px;
-  transition:border-color .25s, box-shadow .25s;
-  min-height:58px;
+  border-radius:999px;
+  padding:8px 8px 8px 20px;
+  display:flex;align-items:center;gap:2px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
+  /* expand animation on focus */
+  transition:min-height .3s cubic-bezier(.34,1.56,.64,1),
+             padding .3s cubic-bezier(.34,1.56,.64,1),
+             box-shadow .3s ease,
+             border-color .25s ease;
+  min-height:56px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  transform-origin:center bottom;
 }
-body.light .input-wrap{background:#fff;border-color:rgba(0,0,0,0.12);}
+body.light .input-wrap{
+  background:rgba(255,255,255,0.96);
+  border-color:rgba(0,0,0,0.1);
+  box-shadow:0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+}
 .input-wrap:focus-within{
-  border-color:rgba(124,58,237,.4);
-  box-shadow:0 0 0 3px rgba(124,58,237,0.08);
+  border-color:rgba(124,58,237,.6);
+  box-shadow:0 16px 48px rgba(124,58,237,0.28), 0 4px 16px rgba(0,0,0,0.4);
+  min-height:64px;
+  padding-top:12px;
+  padding-bottom:12px;
 }
 
 #msginput{
   flex:1;background:none;border:none;outline:none;
   color:var(--text);font-family:inherit;font-size:15px;
-  resize:none;max-height:160px;line-height:1.55;
-  padding:0;min-height:22px;
+  resize:none;max-height:140px;line-height:1.55;
+  padding:0 4px;min-height:22px;
 }
-#msginput::placeholder{color:rgba(255,255,255,0.25);font-size:15px;}
+#msginput::placeholder{color:rgba(255,255,255,0.28);}
 body.light #msginput::placeholder{color:rgba(0,0,0,0.3);}
 
 /* icon buttons */
 .iact{
-  width:40px;height:40px;border-radius:10px;
+  width:40px;height:40px;border-radius:50%;
   background:none;border:none;
-  color:rgba(255,255,255,0.45);
+  color:rgba(255,255,255,0.5);
   cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition:all .18s;flex-shrink:0;
 }
 body.light .iact{color:rgba(0,0,0,0.4);}
-.iact:hover{color:rgba(255,255,255,0.8);}
-body.light .iact:hover{color:rgba(0,0,0,0.75);}
+.iact:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.07);}
+body.light .iact:hover{color:rgba(0,0,0,0.8);background:rgba(0,0,0,0.06);}
+.iact:active{transform:scale(0.9);}
 .iact svg{width:20px;height:20px;pointer-events:none;}
-/* + button: dark circle like ChatGPT */
+
+/* + circle button */
 .iact-plus{
   width:38px;height:38px;border-radius:50%;
-  background:rgba(255,255,255,0.12);
-  color:var(--text);
+  background:rgba(255,255,255,0.13);
+  color:rgba(255,255,255,0.9);
+  flex-shrink:0;
 }
-body.light .iact-plus{background:rgba(0,0,0,0.1);color:#111;}
-.iact-plus:hover{background:rgba(255,255,255,0.2);}
-body.light .iact-plus:hover{background:rgba(0,0,0,0.16);}
-.iact-plus svg{width:18px;height:18px;}
+body.light .iact-plus{background:rgba(0,0,0,0.09);color:#111;}
+.iact-plus:hover{background:rgba(255,255,255,0.22)!important;}
+body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
+.iact-plus svg{width:17px;height:17px;}
 
-/* send — purple filled circle */
+/* Send button — purple circle, expands on click */
 #sendbtn{
   width:40px;height:40px;border-radius:50%;
   background:var(--accent);border:none;cursor:pointer;
   color:#fff;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;transition:opacity .2s, transform .2s;
-  margin-left:2px;
+  flex-shrink:0;
+  box-shadow:0 4px 14px rgba(124,58,237,0.5);
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s, opacity .15s;
 }
-#sendbtn:hover{opacity:.88;transform:scale(1.08);}
-#sendbtn:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+#sendbtn:hover{
+  transform:scale(1.1);
+  box-shadow:0 6px 20px rgba(124,58,237,0.65);
+}
+#sendbtn:active{
+  transform:scale(1.22);
+  box-shadow:0 8px 28px rgba(124,58,237,0.8);
+}
+#sendbtn:disabled{
+  opacity:.28;cursor:not-allowed;
+  transform:none;box-shadow:none;
+}
 #sendbtn svg{width:17px;height:17px;pointer-events:none;}
+@keyframes sendbounce{
+  0%{transform:scale(1);}
+  40%{transform:scale(1.28);}
+  70%{transform:scale(0.92);}
+  100%{transform:scale(1);}
+}
+#sendbtn.sending{animation:sendbounce .4s cubic-bezier(.34,1.56,.64,1);}
 
 /* ── MOBILE RESPONSIVE ── */
 @media(max-width:600px){
@@ -400,24 +503,25 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.16);}
   .bcol{max-width:88%;}
 
   /* Welcome screen */
-  .welcome{padding:0 0 20px;}
-  .suggestions{padding:0 12px;}
-  .sug-item{padding:14px 4px;gap:14px;}
-  .sug-icon{width:34px;height:34px;}
-  .sug-icon svg{width:16px;height:16px;}
-  .sug-text{font-size:14.5px;}
+  .welcome{padding:0 0 14px;}
+  .suggestions{padding:0 14px 6px;gap:10px;}
+  .sug-item{width:130px;height:130px;padding:15px 14px 15px;border-radius:18px;}
+  .sug-icon{width:36px;height:36px;border-radius:10px;}
+  .sug-icon svg{width:18px;height:18px;}
+  .sug-title{font-size:12.5px;}
+  .sug-sub{font-size:11px;}
+  .msgs-outer{padding-top:60px;}
 
-  /* Footer */
-  .footer-wrap{padding:8px 12px 10px;}
+  /* Floating input */
+  .footer-wrap{padding:6px 12px 18px;}
   .footer-hint{font-size:10.5px;padding-top:6px;}
-
-  /* Input box */
-  .input-wrap{padding:8px 8px 8px 14px;border-radius:16px;min-height:50px;}
+  .input-wrap{padding:7px 7px 7px 18px;min-height:52px;}
   #msginput{font-size:15px;}
-  .iact{width:36px;height:36px;}
+  .iact{width:38px;height:38px;}
   .iact svg{width:19px;height:19px;}
-  #sendbtn{width:36px;height:36px;}
-  #sendbtn svg{width:15px;height:15px;}
+  .iact-plus{width:36px;height:36px;}
+  #sendbtn{width:38px;height:38px;}
+  #sendbtn svg{width:16px;height:16px;}
 
   /* Bubbles */
   .bubble{font-size:13.5px;padding:10px 14px;}
@@ -555,31 +659,36 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.16);}
   <!-- Messages -->
   <div class="msgs-outer" id="msgsOuter">
     <div id="msgs">
-      <div class="welcome" id="welcome">
-        <div class="suggestions">
-          <button class="sug-item" onclick="sendChip(this.querySelector('.sug-text').textContent)">
-            <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
-            <span class="sug-text">Search latest news online</span>
-          </button>
-          <button class="sug-item" onclick="sendChip(this.querySelector('.sug-text').textContent)">
-            <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
-            <span class="sug-text">Analyze an image for me</span>
-          </button>
-          <button class="sug-item" onclick="sendChip(this.querySelector('.sug-text').textContent)">
-            <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-            <span class="sug-text">Help me write something</span>
-          </button>
-          <button class="sug-item" onclick="startRec()">
-            <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
-            <span class="sug-text">Send a voice message</span>
-          </button>
-        </div>
-      </div>
+      <div class="welcome" id="welcome"></div>
     </div>
   </div>
 
   <!-- Footer -->
   <div class="footer-wrap">
+
+    <!-- Suggestion cards — shown only on welcome screen -->
+    <div class="suggestions" id="sugCards">
+      <button class="sug-item" onclick="sendMsg('Search the web for latest news')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Search the web</span><span class="sug-sub">Get real-time info</span></div>
+      </button>
+      <button class="sug-item" onclick="document.getElementById('imginput').click()">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Analyze image</span><span class="sug-sub">Visualize anything</span></div>
+      </button>
+      <button class="sug-item" onclick="sendMsg('Help me brainstorm ideas')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 6a6 6 0 1 0 6 6"/><path d="M18 12h4"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Brainstorm ideas</span><span class="sug-sub">Spark creativity</span></div>
+      </button>
+      <button class="sug-item" onclick="sendMsg('Help me write something')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Write something</span><span class="sug-sub">Essays, posts & more</span></div>
+      </button>
+      <button class="sug-item" onclick="startRec()">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Voice message</span><span class="sug-sub">Speak to Vectra</span></div>
+      </button>
+    </div>
     <div class="footer-inner">
       <div id="recrow">
         <div class="rec-dot"></div>
@@ -721,7 +830,7 @@ function resizeInp(el) { el.style.height = 'auto'; el.style.height = Math.min(el
 function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sbtn.disabled) sendMsg(); } }
 function getTime() { return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
 function getLogo() { return document.getElementById('logoimg').src; }
-function hideWelcome() { var w = document.getElementById('welcome'); if (w) w.style.display = 'none'; }
+function hideWelcome() { var w = document.getElementById('welcome'); if (w) w.style.display = 'none'; var s = document.getElementById('sugCards'); if(s) { s.style.transition='opacity .3s ease'; s.style.opacity='0'; setTimeout(function(){s.style.display='none';},300); } }
 
 function sendChip(el) {
   var txt = typeof el === 'string' ? el : el.textContent;
@@ -822,6 +931,9 @@ function hideTyping() { var t = document.getElementById('typing'); if (t) t.remo
 async function sendMsg(text) {
   var msg = text || inp.value.trim();
   if (!msg || busy) return;
+  // bounce animation on send
+  sbtn.classList.add('sending');
+  setTimeout(function(){sbtn.classList.remove('sending');},420);
   inp.value = ''; inp.style.height = 'auto'; sbtn.disabled = true; busy = true;
   addMsg(msg, 'user');
   addRecentChat(msg.length > 40 ? msg.slice(0, 40) + '…' : msg);
@@ -938,26 +1050,11 @@ async function processVoice() {
 function clearChat() {
   fetch(API+'/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:SID})}).catch(function(){});
   msgs.innerHTML = '';
-  var w = document.createElement('div'); w.className = 'welcome'; w.id = 'welcome'; w.style.opacity = '1';
-  var sugs = document.createElement('div'); sugs.className = 'suggestions';
-  var items = [
-    {icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>', text:'Search latest news online'},
-    {icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', text:'Analyze an image for me'},
-    {icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>', text:'Help me write something'},
-    {icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', text:'Send a voice message'}
-  ];
-  items.forEach(function(it,i){
-    var btn=document.createElement('button'); btn.className='sug-item';
-    var ico=document.createElement('div'); ico.className='sug-icon'; ico.innerHTML=it.icon;
-    var txt=document.createElement('span'); txt.className='sug-text'; txt.textContent=it.text;
-    btn.appendChild(ico); btn.appendChild(txt);
-    if(i===3){btn.onclick=function(){startRec();};}
-    else{(function(t){btn.onclick=function(){sendMsg(t);};})(it.text);}
-    sugs.appendChild(btn);
-  });
-  w.appendChild(sugs);
-  msgs.appendChild(w);
+  // Reveal footer suggestions with fade-in
+  var s = document.getElementById('sugCards');
+  if(s){ s.style.display='flex'; s.style.opacity='0'; s.style.transition='none';
+    setTimeout(function(){ s.style.transition='opacity .4s ease'; s.style.opacity='1'; },50); }
 }
 </script>
 </body>
-  </html>
+                                </html>
