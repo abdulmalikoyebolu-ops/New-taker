@@ -14,21 +14,23 @@ const path = require('path');
 const pino = require('pino');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const GROQ_API_KEY   = process.env.GROQ_API_KEY;
-const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
-const AUTH_FOLDER    = './auth_info';
-const MAX_HISTORY    = 20;
-const PORT           = process.env.PORT || 3000;
+const GROQ_API_KEY     = process.env.GROQ_API_KEY;
+const TAVILY_API_KEY   = process.env.TAVILY_API_KEY;
+const GOOGLE_API_KEY   = process.env.GOOGLE_API_KEY;   // Google Custom Search API key
+const GOOGLE_CSE_ID    = process.env.GOOGLE_CSE_ID;    // Google Programmable Search Engine ID
+const AUTH_FOLDER      = './auth_info';
+const MAX_HISTORY      = 20;
+const PORT             = process.env.PORT || 3000;
 
 // Current active Groq models (updated June 2026)
-const CHAT_MODEL   = 'openai/gpt-oss-20b';           // fast chat model
-const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; // vision (Scout still active)
-const VISION_FALLBACK = 'openai/gpt-oss-120b';        // fallback if Scout is down
+const CHAT_MODEL      = 'openai/gpt-oss-20b';           // fast chat model
+const VISION_MODEL    = 'meta-llama/llama-4-scout-17b-16e-instruct'; // vision (Scout still active)
+const VISION_FALLBACK = 'openai/gpt-oss-120b';          // fallback if Scout is down
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You use emojis naturally, not excessively. No markdown formatting — no asterisks, no hashtags, no bullet points. Always write in plain natural text. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.`;
 
-const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results. Use the search results to give accurate, up-to-date answers. Be conversational and natural — explain things clearly like you are talking to a friend. No markdown formatting, no bullet points, no asterisks. Plain natural text only. The current year is 2026.`;
+const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. Be conversational and natural, like you are talking to a friend. No markdown formatting, no bullet points, no asterisks. Plain natural text only. The current year is 2026.`;
 
 const VISION_PROMPT = `You are Vektra, a smart and witty AI assistant built by VektraStudio. Someone just sent you an image, possibly with a question or caption.
 
@@ -44,26 +46,102 @@ If there is NO caption or question, react casually like a friend:
 
 Always sound natural and conversational. No markdown, no bullet points. Plain text only.`;
 
-const SEARCH_KEYWORDS = [
-  'search online', 'google it', 'check online', 'find out', 'look up',
-  'latest news', 'current price', 'breaking news', 'weather today', 'who won',
-  'live score', 'this week news', 'search for', 'check the internet', 'search it',
-  'look online', 'find online', 'check it online', 'what happened', 'online'
-];
-
 // ─── State ────────────────────────────────────────────────────────────────────
-let latestQR    = null;
-let isConnected = false;
-let sock        = null;
-let conversations = {}; // WhatsApp sessions
-let webSessions   = {}; // Web app sessions
+let latestQR      = null;
+let isConnected    = false;
+let sock           = null;
+let conversations  = {}; // WhatsApp sessions
+let webSessions    = {}; // Web app sessions
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function needsWebSearch(text) {
-  const lower = text.toLowerCase();
-  return SEARCH_KEYWORDS.some(kw => lower.includes(kw));
+// ─── Search decision (replaces old keyword-list approach) ────────────────────
+async function shouldSearch(message) {
+  // Quick bypass: obviously casual short messages skip the classifier call entirely
+  const casual = /^(hi|hey|hello|yo|sup|how far|lol|lmao|thanks|thank you|ok|okay|nice|cool)\b/i;
+  if (casual.test(message.trim()) && message.trim().length < 20) return false;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Reply with ONLY one word: SEARCH or CHAT. Say SEARCH if answering accurately requires current facts, specific dates, prices, versions, real people/events, or anything that could be outdated or wrong from memory. Say CHAT for casual conversation, opinions, jokes, or general knowledge that does not change over time.'
+          },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 5,
+        temperature: 0
+      })
+    });
+    const data = await res.json();
+    const decision = data.choices?.[0]?.message?.content?.trim().toUpperCase();
+    return decision?.includes('SEARCH');
+  } catch (e) {
+    console.error('Search classifier failed, defaulting to no search:', e.message);
+    return false;
+  }
 }
 
+// ─── Search providers: Google primary, Tavily fallback ───────────────────────
+async function googleSearch(query) {
+  if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) throw new Error('Google Search not configured');
+
+  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=5`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Google Search API error');
+  if (!data.items || data.items.length === 0) throw new Error('No Google results');
+
+  return data.items
+    .map(item => `${item.title}: ${item.snippet}`)
+    .join(' | ');
+}
+
+async function tavilySearch(query) {
+  if (!TAVILY_API_KEY) throw new Error('Tavily not configured');
+
+  const res = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: TAVILY_API_KEY,
+      query,
+      search_depth: 'basic',
+      max_results: 5
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error('Tavily search failed');
+  return data.results.map(r => `${r.title}: ${r.content}`).join(' | ');
+}
+
+// Tries Google first (broader index), falls back to Tavily if Google fails,
+// quota-limits, or isn't configured. Returns null if both fail.
+async function webSearch(query) {
+  try {
+    const results = await googleSearch(query);
+    console.log('Search source: Google');
+    return results;
+  } catch (googleErr) {
+    console.error('Google Search failed, trying Tavily:', googleErr.message);
+    try {
+      const results = await tavilySearch(query);
+      console.log('Search source: Tavily');
+      return results;
+    } catch (tavilyErr) {
+      console.error('Tavily also failed:', tavilyErr.message);
+      return null;
+    }
+  }
+}
+
+// ─── Groq helpers ──────────────────────────────────────────────────────────────
 async function askGroq(messages) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
@@ -94,7 +172,6 @@ async function askGroq(messages) {
 }
 
 async function askGroqVision(base64Image, mimeType, caption) {
-  // Try primary vision model first, fall back if it fails
   const models = [VISION_MODEL, VISION_FALLBACK];
 
   for (const model of models) {
@@ -128,50 +205,32 @@ async function askGroqVision(base64Image, mimeType, caption) {
       const data = await res.json();
       if (!res.ok) {
         console.error(`Vision model ${model} error:`, data.error?.message);
-        continue; // try next model
+        continue;
       }
       console.log(`Vision handled by: ${model}`);
       return data.choices[0].message.content;
     } catch (e) {
       console.error(`Vision model ${model} failed:`, e.message);
-      // try next model
     }
   }
 
   throw new Error('All vision models failed');
 }
 
-async function tavilySearch(query) {
-  const res = await fetch('https://api.tavily.com/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_key: TAVILY_API_KEY,
-      query,
-      search_depth: 'basic',
-      max_results: 3
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error('Tavily search failed');
-  return data.results.map(r => `${r.title}: ${r.content}`).join(' | ');
-}
-
 async function getReply(sessionHistory, message, useSearch) {
   if (useSearch) {
-    try {
-      const searchResults = await tavilySearch(message);
+    const searchResults = await webSearch(message);
+    if (searchResults) {
       return await askGroq([
         { role: 'system', content: `${SEARCH_SYSTEM_PROMPT} Here are the search results: ${searchResults}` },
         { role: 'user', content: message }
       ]);
-    } catch (searchErr) {
-      console.error('Search failed, falling back:', searchErr.message);
-      return await askGroq([
-        { role: 'system', content: `${SYSTEM_PROMPT} Note: web search is unavailable right now, answer from training data and mention this briefly.` },
-        ...sessionHistory
-      ]);
     }
+    // Both search providers failed — be honest about it instead of silently guessing
+    return await askGroq([
+      { role: 'system', content: `${SYSTEM_PROMPT} Note: web search is unavailable right now. If this question needs current/factual info you are not certain about, say so briefly instead of guessing.` },
+      ...sessionHistory
+    ]);
   }
   return await askGroq([
     { role: 'system', content: SYSTEM_PROMPT },
@@ -305,7 +364,7 @@ async function connectToWhatsApp() {
             } else {
               conversations[jid].push({ role: 'user', content: text });
               conversations[jid] = trimHistory(conversations[jid]);
-              const reply = await askGroq([{ role: 'system', content: SYSTEM_PROMPT }, ...conversations[jid]]);
+              const reply = await getReply(conversations[jid], text, await shouldSearch(text));
               conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
               await sock.sendMessage(jid, { text: reply }, { quoted: message });
             }
@@ -340,7 +399,7 @@ async function connectToWhatsApp() {
         conversations[jid].push({ role: 'user', content: text });
         conversations[jid] = trimHistory(conversations[jid]);
 
-        const reply = await getReply(conversations[jid], text, needsWebSearch(text));
+        const reply = await getReply(conversations[jid], text, await shouldSearch(text));
         conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
 
         await sock.sendMessage(jid, { text: reply }, { quoted: message });
@@ -355,7 +414,6 @@ async function connectToWhatsApp() {
 
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -379,7 +437,7 @@ const server = http.createServer(async (req, res) => {
         webSessions[sid].push({ role: 'user', content: message });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await getReply(webSessions[sid], message, needsWebSearch(message));
+        const reply = await getReply(webSessions[sid], message, await shouldSearch(message));
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -427,7 +485,6 @@ const server = http.createServer(async (req, res) => {
 
         const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
 
-        // Save image context so follow-up questions work
         webSessions[sid].push({ role: 'user', content: caption ? `I sent you an image with caption: ${caption}` : 'I sent you an image' });
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
         webSessions[sid] = trimHistory(webSessions[sid]);
@@ -481,7 +538,7 @@ const server = http.createServer(async (req, res) => {
         webSessions[sid].push({ role: 'user', content: text });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await askGroq([{ role: 'system', content: SYSTEM_PROMPT }, ...webSessions[sid]]);
+        const reply = await getReply(webSessions[sid], text, await shouldSearch(text));
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
@@ -537,7 +594,14 @@ const server = http.createServer(async (req, res) => {
   // ── GET /status ──
   if (req.method === 'GET' && req.url === '/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'online', whatsapp: isConnected }));
+    res.end(JSON.stringify({
+      status: 'online',
+      whatsapp: isConnected,
+      search: {
+        google: !!(GOOGLE_API_KEY && GOOGLE_CSE_ID),
+        tavily: !!TAVILY_API_KEY
+      }
+    }));
     return;
   }
 
@@ -553,6 +617,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Vision model: ${VISION_MODEL} (fallback: ${VISION_FALLBACK})`);
+  console.log(`Search: Google=${!!(GOOGLE_API_KEY && GOOGLE_CSE_ID)} Tavily=${!!TAVILY_API_KEY}`);
   connectToWhatsApp();
 });
 
