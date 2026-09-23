@@ -416,99 +416,12 @@ body.light .sug-sub{color:#888;}
 .footer-hint{text-align:center;font-size:11px;color:var(--text-sub);padding-top:8px;opacity:.7;}
 
 /* Floating pill */
-.input-wrap{
-  background:rgba(28,28,40,0.93);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:999px;
-  padding:8px 8px 8px 20px;
-  display:flex;align-items:center;gap:2px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
-  /* expand animation on focus */
-  transition:min-height .3s cubic-bezier(.34,1.56,.64,1),
-             padding .3s cubic-bezier(.34,1.56,.64,1),
-             box-shadow .3s ease,
-             border-color .25s ease;
-  min-height:56px;
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  transform-origin:center bottom;
-}
-body.light .input-wrap{
-  background:rgba(255,255,255,0.96);
-  border-color:rgba(0,0,0,0.1);
-  box-shadow:0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
-}
-.input-wrap:focus-within{
-  border-color:rgba(124,58,237,.6);
-  box-shadow:0 16px 48px rgba(124,58,237,0.28), 0 4px 16px rgba(0,0,0,0.4);
-  min-height:64px;
-  padding-top:12px;
-  padding-bottom:12px;
-}
+.footer-inner{width:100%;max-width:660px;}
+.footer-hint{text-align:center;font-size:11px;color:var(--text-sub);padding-top:8px;opacity:.7;}
 
-#msginput{
-  flex:1;background:none;border:none;outline:none;
-  color:var(--text);font-family:inherit;font-size:15px;
-  resize:none;max-height:140px;line-height:1.55;
-  padding:0 4px;min-height:22px;
-}
-#msginput::placeholder{color:rgba(255,255,255,0.28);}
-body.light #msginput::placeholder{color:rgba(0,0,0,0.3);}
-
-/* icon buttons */
-.iact{
-  width:40px;height:40px;border-radius:50%;
-  background:none;border:none;
-  color:rgba(255,255,255,0.5);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:all .18s;flex-shrink:0;
-}
-body.light .iact{color:rgba(0,0,0,0.4);}
-.iact:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.07);}
-body.light .iact:hover{color:rgba(0,0,0,0.8);background:rgba(0,0,0,0.06);}
-.iact:active{transform:scale(0.9);}
-.iact svg{width:20px;height:20px;pointer-events:none;}
-
-/* + circle button */
-.iact-plus{
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(255,255,255,0.13);
-  color:rgba(255,255,255,0.9);
-  flex-shrink:0;
-}
-body.light .iact-plus{background:rgba(0,0,0,0.09);color:#111;}
-.iact-plus:hover{background:rgba(255,255,255,0.22)!important;}
-body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
-.iact-plus svg{width:17px;height:17px;}
-
-/* Send button — purple circle, expands on click */
-#sendbtn{
-  width:40px;height:40px;border-radius:50%;
-  background:var(--accent);border:none;cursor:pointer;
-  color:#fff;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-  box-shadow:0 4px 14px rgba(124,58,237,0.5);
-  transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s, opacity .15s;
-}
-#sendbtn:hover{
-  transform:scale(1.1);
-  box-shadow:0 6px 20px rgba(124,58,237,0.65);
-}
-#sendbtn:active{
-  transform:scale(1.22);
-  box-shadow:0 8px 28px rgba(124,58,237,0.8);
-}
-#sendbtn:disabled{
-  opacity:.28;cursor:not-allowed;
-  transform:none;box-shadow:none;
-}
-#sendbtn svg{width:17px;height:17px;pointer-events:none;}
-@keyframes sendbounce{
-  0%{transform:scale(1);}
-  40%{transform:scale(1.28);}
-  70%{transform:scale(0.92);}
-  100%{transform:scale(1);}
-}
+/* Floating pill */
+.input-wrap{ ... }
+...all the way down to...
 #sendbtn.sending{animation:sendbounce .4s cubic-bezier(.34,1.56,.64,1);}
 
 /* ── MOBILE RESPONSIVE ── */
@@ -548,8 +461,9 @@ body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
   /* Floating input */
   .footer-wrap{padding:6px 12px 18px;}
   .footer-hint{font-size:10.5px;padding-top:6px;}
-  .input-wrap{padding:7px 7px 7px 18px;min-height:52px;}
-  #msginput{font-size:15px;}
+  .footer-inner{width:88%;max-width:340px;}
+.footer-inner:focus-within{width:96%;max-width:520px;}
+.input-wrap{padding:6px 6px 6px 16px;min-height:44px;}
   .iact{width:38px;height:38px;}
   .iact svg{width:19px;height:19px;}
   .iact-plus{width:36px;height:36px;}
