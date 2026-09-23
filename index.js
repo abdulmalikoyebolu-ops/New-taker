@@ -27,11 +27,11 @@ const VISION_MODEL    = 'qwen/qwen3.8-27b';
 const VISION_FALLBACK = 'qwen/qwen3.8-27b'; // retry (without reasoning_effort) if the first attempt fails
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You use emojis naturally, not excessively. Match the format to the message. For greetings, small talk, opinions and simple questions, reply the way a friend would text: one to three short natural sentences, at most one emoji, and never a list. Never give several alternative replies or several versions of the same answer, give exactly one answer. Only when the user asks for information that truly has several separate parts (steps, a comparison, a set of items, an explanation with distinct points) use this structure: one short intro line, a blank line, then a plain numbered list (1. 2. 3.) with each item on its own new line as a short title, a dash, and a one or two sentence explanation (use dot bullets • when the order does not matter, never emoji numbers), then a blank line and a short friendly wrap-up line. Never use asterisks, hashtags or markdown symbols. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
+const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You love emojis: add fitting emojis often so your replies feel lively, warm and fun, usually two or three per reply, placed naturally. Match the format to the message. For greetings, small talk, opinions and simple questions, reply the way a friend would text: one to three short natural sentences with a couple of fitting emojis, and never a list. Never give several alternative replies or several versions of the same answer, give exactly one answer. Only when the user asks for information that truly has several separate parts (steps, a comparison, a set of items, an explanation with distinct points) use this structure: one short intro line, a blank line, then a plain numbered list (1. 2. 3.) with each item on its own new line as a fitting emoji, a short title, a dash, and a one or two sentence explanation, for example: 1. 🔥 Title – explanation (use dot bullets • when the order does not matter, and always write the numbers as plain digits, never emoji numbers), then a blank line and a short friendly wrap-up line with an emoji. Never use asterisks, hashtags or markdown symbols. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
 
 Accuracy rule: you do not have live information and your training data has a cutoff, so specific facts like release dates, version numbers, prices, current events, or anything that changes over time may be outdated or simply wrong in your memory. If a question depends on a fact like that and you are not fully certain, say so plainly instead of stating a guess as if it were confirmed — for example say something like "I'm not fully sure on that, it might have changed" rather than inventing a specific date or number. Being honestly uncertain is always better than sounding confident and being wrong.`;
 
-const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. If the search results do not actually answer the question, say so honestly instead of guessing. Be conversational and natural, like you are talking to a friend. Answer simple questions in one or two short sentences. Only when the answer has several distinct items use one short intro line, then a plain numbered list (1. 2. 3.) or dot bullets (•) with each item on its own new line, then a short friendly wrap-up. Give exactly one answer, never several alternatives. No asterisks, hashtags or markdown symbols. The current year is 2026.`;
+const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. If the search results do not actually answer the question, say so honestly instead of guessing. Be conversational and natural, like you are talking to a friend. Answer simple questions in one or two short sentences, and use fitting emojis often. Only when the answer has several distinct items use one short intro line, then a plain numbered list (1. 2. 3.) or dot bullets (•) with each item on its own new line starting with a fitting emoji after the number, then a short friendly wrap-up with an emoji. Give exactly one answer, never several alternatives. No asterisks, hashtags or markdown symbols. The current year is 2026.`;
 
 const VISION_PROMPT = `You are Vektra, a smart and witty AI assistant built by VektraStudio. Someone just sent you an image, possibly with a question or caption.
 
@@ -66,9 +66,12 @@ async function fetchWithTimeout(url, options, ms) {
 }
 
 // ─── Search decision (with safer failure default) ─────────────────────────────
-async function shouldSearch(message) {
-  const casual = /^(hi|hey|hello|yo|sup|how far|lol|lmao|thanks|thank you|ok|okay|nice|cool)\b/i;
-  if (casual.test(message.trim()) && message.trim().length < 20) return false;
+async function shouldSearch(message, history = []) {
+  const casual = /^(hi|hey|hello|yo|sup|how far|lol|lmao|haha+|thanks|thank you|ok+|okay|nice|cool|i see|i understand|oh+|wow|alright|got it|hmm+|yeah|yep|true|damn|omo|wahala|ehen|oya|noted|makes sense|interesting|ah+)\b/i;
+  const trimmed = message.trim();
+  if (casual.test(trimmed) && trimmed.length < 30) return false;
+  if (/^[\p{Extended_Pictographic}\s\uFE0F]+$/u.test(trimmed)) return false;
+  const recent = history.slice(-5, -1).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
 
   try {
     const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
@@ -82,9 +85,9 @@ async function shouldSearch(message) {
         messages: [
           {
             role: 'system',
-            content: 'Reply with ONLY one word: SEARCH or CHAT. Say SEARCH if answering accurately requires current facts, specific dates, prices, versions, real people/events, or anything that could be outdated or wrong from memory. Say CHAT for casual conversation, opinions, jokes, or general knowledge that does not change over time.'
+            content: 'Reply with ONLY one word: SEARCH or CHAT. Say SEARCH if answering accurately requires current facts, specific dates, prices, versions, real people/events, or anything that could be outdated or wrong from memory. Say CHAT for casual conversation, reactions, opinions, jokes, questions about fiction or general knowledge that does not change over time, and for any follow-up or reaction that simply continues the recent conversation.'
           },
-          { role: 'user', content: message }
+          { role: 'user', content: (recent ? `Recent conversation:\n${recent}\n\n` : '') + `Latest message: ${message}` }
         ],
         max_tokens: 5,
         temperature: 0
@@ -232,11 +235,16 @@ async function askGroqVision(base64Image, mimeType, caption) {
 
 async function getReply(sessionHistory, message, useSearch) {
   if (useSearch) {
-    const searchResults = await webSearch(message);
+    let query = message;
+    if (message.trim().split(/\s+/).length < 6) {
+      const prevUser = [...sessionHistory].reverse().slice(1).find(m => m.role === 'user');
+      if (prevUser) query = `${prevUser.content} ${message}`;
+    }
+    const searchResults = await webSearch(query);
     if (searchResults) {
       return await askGroq([
-        { role: 'system', content: `${SEARCH_SYSTEM_PROMPT} Here are the search results: ${searchResults}` },
-        { role: 'user', content: message }
+        { role: 'system', content: `${SEARCH_SYSTEM_PROMPT} Use the earlier conversation for context. Here are the search results: ${searchResults}` },
+        ...sessionHistory
       ]);
     }
     return await askGroq([
@@ -374,8 +382,8 @@ async function connectToWhatsApp() {
             } else {
               conversations[jid].push({ role: 'user', content: text });
               conversations[jid] = trimHistory(conversations[jid]);
-              const reply = await getReply(conversations[jid], text, await shouldSearch(text));
-              conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
+              const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]));
+              conversations[jid].push({ role: 'assistant', content: reply.slice(0, 600) });
               await sock.sendMessage(jid, { text: reply }, { quoted: message });
             }
           } catch (e) {
@@ -408,8 +416,8 @@ async function connectToWhatsApp() {
         conversations[jid].push({ role: 'user', content: text });
         conversations[jid] = trimHistory(conversations[jid]);
 
-        const reply = await getReply(conversations[jid], text, await shouldSearch(text));
-        conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
+        const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]));
+        conversations[jid].push({ role: 'assistant', content: reply.slice(0, 600) });
 
         await sock.sendMessage(jid, { text: reply }, { quoted: message });
         await sock.sendPresenceUpdate('paused', jid);
@@ -428,6 +436,10 @@ async function connectToWhatsApp() {
 
 // ─── UI fix injected into the web page when it is served ──────────────────────
 const UI_FIX_CSS = String.raw`
+/* Use the device's own font */
+html body, html body button, html body input, html body textarea{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans",Arial,"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif !important;
+}
 /* Input bar visibility */
 .input-wrap{
   background:#1c1c21;
@@ -536,8 +548,8 @@ const server = http.createServer(async (req, res) => {
         webSessions[sid].push({ role: 'user', content: message });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await getReply(webSessions[sid], message, await shouldSearch(message));
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
+        const reply = await getReply(webSessions[sid], message, await shouldSearch(message, webSessions[sid]));
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ reply }));
@@ -583,7 +595,7 @@ const server = http.createServer(async (req, res) => {
         const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
 
         webSessions[sid].push({ role: 'user', content: caption ? `I sent you an image with caption: ${caption}` : 'I sent you an image' });
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -634,8 +646,8 @@ const server = http.createServer(async (req, res) => {
         webSessions[sid].push({ role: 'user', content: text });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await getReply(webSessions[sid], text, await shouldSearch(text));
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
+        const reply = await getReply(webSessions[sid], text, await shouldSearch(text, webSessions[sid]));
+        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
