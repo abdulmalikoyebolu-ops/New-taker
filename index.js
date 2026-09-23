@@ -54,6 +54,20 @@ let sock           = null;
 let conversations  = {};
 let webSessions    = {};
 
+// ─── Feedback store (so feedback is never lost, even if email fails) ──────────
+const FEEDBACK_FILE = process.env.FEEDBACK_FILE || './feedback.json';
+const FEEDBACK_TO   = process.env.FEEDBACK_EMAIL || 'abdulmalikoyebolu3@gmail.com';
+let feedbackLog = [];
+try { feedbackLog = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf8')); } catch (e) { feedbackLog = []; }
+function saveFeedback(entry) {
+  feedbackLog.push(entry);
+  if (feedbackLog.length > 300) feedbackLog = feedbackLog.slice(-300);
+  try { fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(feedbackLog)); } catch (e) { /* ignore */ }
+}
+function escHtml(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ─── Long-term memory: durable facts about each user (name, likes, etc.) ──────
 const MEMORY_FILE = process.env.MEMORY_FILE || './memories.json';
 let memories = {};
@@ -544,6 +558,46 @@ const UI_FIX_JS = String.raw`
     }).join('');
   }
   window.vektraFmt=fmt;
+  var _fbQuestion='';
+  var _origOpenFbModal=openFbModal;
+  openFbModal=function(type,msgText,lb,db){
+    _fbQuestion='';
+    var rows=msgs.querySelectorAll('.row.bot');
+    for(var i=rows.length-1;i>=0;i--){
+      var b=rows[i].querySelector('.bubble');
+      if(b&&b.textContent===msgText){
+        var p=rows[i].previousElementSibling;
+        while(p){
+          if(p.classList&&p.classList.contains('user')){
+            var ub=p.querySelector('.bubble');
+            if(ub)_fbQuestion=ub.textContent||'';
+            break;
+          }
+          p=p.previousElementSibling;
+        }
+        break;
+      }
+    }
+    return _origOpenFbModal.apply(this,arguments);
+  };
+  submitFeedback=async function(){
+    var comment=document.getElementById('fb-text').value.trim();
+    var btn=document.getElementById('fb-submit-btn');
+    btn.disabled=true;btn.textContent='Sending...';
+    var ok=false;
+    try{
+      var res=await fetch(API+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:fbType,message:fbMsgText,question:_fbQuestion,comment:comment,sessionId:SID,time:new Date().toISOString()})});
+      ok=res.ok;
+    }catch(e){ok=false;}
+    if(ok){
+      if(fbType==='thumbs_up'&&fbLikeBtn){fbLikeBtn.classList.add('liked');if(fbDislikeBtn)fbDislikeBtn.classList.remove('disliked');}
+      else if(fbDislikeBtn){fbDislikeBtn.classList.add('disliked');if(fbLikeBtn)fbLikeBtn.classList.remove('liked');}
+      btn.textContent='Sent! ✓';
+      setTimeout(function(){closeFbModal();},700);
+    }else{
+      btn.textContent='Failed - tap to retry';btn.disabled=false;
+    }
+  };
   var _f=window.fetch;
   window.fetch=function(url,opts){
     var isChat=typeof url==='string'&&/\/(chat|voice)$/.test(url);
@@ -717,31 +771,41 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { type, message, comment, sessionId, time } = JSON.parse(body);
+        const { type, message, question, comment, sessionId, time } = JSON.parse(body);
         const emoji   = type === 'thumbs_up' ? '👍' : '👎';
         const subject = `${emoji} Vektra Feedback: ${type.replace('_', ' ')}`;
-        const text    = `Feedback: ${emoji} ${type.toUpperCase()}\n\nComment:\n${comment || '(none)'}\n\nBot Message:\n${message}\n\nSession: ${sessionId}\nTime: ${time}`;
+        const text    = `Feedback: ${emoji} ${type.toUpperCase()}\n\nComment:\n${comment || '(none)'}\n\nUser asked:\n${question || '(unknown)'}\n\nBot replied:\n${message}\n\nSession: ${sessionId}\nTime: ${time}`;
 
+        saveFeedback({ type, message, question: question || '', comment: comment || '', sessionId, time: time || new Date().toISOString() });
+        console.log('Feedback received:', text);
+
+        let emailed = false;
         if (process.env.RESEND_API_KEY) {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: 'Vektra Bot <onboarding@resend.dev>',
-              to: ['abdulmalikoyebolu3@gmail.com'],
-              subject,
-              text
-            })
-          });
+          try {
+            const r = await fetchWithTimeout('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                from: 'Vektra Bot <onboarding@resend.dev>',
+                to: [FEEDBACK_TO],
+                subject,
+                text
+              })
+            }, 10000);
+            if (r.ok) emailed = true;
+            else console.error('Resend rejected the feedback email:', r.status, await r.text());
+          } catch (mailErr) {
+            console.error('Resend request failed:', mailErr.message);
+          }
         } else {
-          console.log('RESEND_API_KEY not set — feedback logged here instead:', text);
+          console.log('RESEND_API_KEY not set, so no email was sent (feedback is still saved).');
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, emailed }));
       } catch (e) {
         console.error('Feedback error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -749,6 +813,23 @@ const server = http.createServer(async (req, res) => {
       }
     });
     return;
+  }
+
+  if (req.method === 'GET' && req.url.startsWith('/admin/feedback')) {
+    const key = new URL(req.url, 'http://localhost').searchParams.get('key');
+    if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      return res.end('Forbidden');
+    }
+    const items = feedbackLog.slice().reverse().map(f => `
+      <div style="border:1px solid #333;border-radius:12px;padding:12px;margin:10px 0;">
+        <div style="font-size:18px">${f.type === 'thumbs_up' ? '👍' : '👎'} <small style="color:#888">${escHtml(f.time)}</small></div>
+        <div style="margin-top:8px"><b>Comment:</b> ${escHtml(f.comment) || '<i>(none)</i>'}</div>
+        <div style="margin-top:8px;color:#8ab4ff"><b>User asked:</b> ${escHtml(f.question) || '<i>(unknown)</i>'}</div>
+        <div style="margin-top:8px;color:#aaa"><b>Bot replied:</b> ${escHtml(f.message)}</div>
+      </div>`).join('');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vektra feedback</title></head><body style="background:#000;color:#eee;font-family:system-ui,sans-serif;padding:16px;max-width:700px;margin:auto"><h2>Vektra feedback (${feedbackLog.length})</h2>${items || '<p>No feedback yet.</p>'}</body></html>`);
   }
 
   if (req.method === 'GET' && req.url === '/status') {
@@ -760,7 +841,9 @@ const server = http.createServer(async (req, res) => {
         google: !!(GOOGLE_API_KEY && GOOGLE_CSE_ID),
         tavily: !!TAVILY_API_KEY
       },
-      feedbackEmail: !!process.env.RESEND_API_KEY
+      feedbackEmail: !!process.env.RESEND_API_KEY,
+      feedbackSaved: feedbackLog.length,
+      adminPage: !!process.env.ADMIN_KEY
     }));
     return;
   }
