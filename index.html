@@ -1,635 +1,1102 @@
-require('dotenv').config();
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  isJidBroadcast
-} = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const pino = require('pino');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vektra AI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const GROQ_API_KEY     = process.env.GROQ_API_KEY;
-const TAVILY_API_KEY   = process.env.TAVILY_API_KEY;
-const GOOGLE_API_KEY   = process.env.GOOGLE_API_KEY;
-const GOOGLE_CSE_ID    = process.env.GOOGLE_CSE_ID;
-const AUTH_FOLDER      = './auth_info';
-const MAX_HISTORY      = 20;
-const PORT             = process.env.PORT || 3000;
-
-const CHAT_MODEL      = 'openai/gpt-oss-20b';
-const VISION_MODEL    = 'meta-llama/llama-4-scout-17b-16e-instruct';
-const VISION_FALLBACK = 'openai/gpt-oss-120b';
-
-// ─── Prompts ──────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You use emojis naturally, not excessively. Format every reply like a clean, well-organized chat answer. Start with one short line that answers or introduces the topic, then a blank line. When the answer has several parts, use a numbered list where each item starts with one fitting emoji, then a short title, a dash, and a one or two sentence explanation. Leave a blank line between every section. End with a short friendly wrap-up line, with an emoji when it fits. Keep simple questions short, with no list. Never use asterisks, hashtags or markdown symbols. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
-
-Accuracy rule: you do not have live information and your training data has a cutoff, so specific facts like release dates, version numbers, prices, current events, or anything that changes over time may be outdated or simply wrong in your memory. If a question depends on a fact like that and you are not fully certain, say so plainly instead of stating a guess as if it were confirmed — for example say something like "I'm not fully sure on that, it might have changed" rather than inventing a specific date or number. Being honestly uncertain is always better than sounding confident and being wrong.`;
-
-const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. If the search results do not actually answer the question, say so honestly instead of guessing. Be conversational and natural, like you are talking to a friend. Start with one short line that answers the question, then use a numbered list with one fitting emoji at the start of each item when there are several parts, and end with a short friendly wrap-up. Leave a blank line between sections. No asterisks, hashtags or markdown symbols. The current year is 2026.`;
-
-const VISION_PROMPT = `You are Vektra, a smart and witty AI assistant built by VektraStudio. Someone just sent you an image, possibly with a question or caption.
-
-MOST IMPORTANT RULE: If the user included a caption or question about the image, answer that question directly and accurately first. The caption is their actual request. For example if they ask "what is that woman doing?" look at the image and answer clearly. If they ask "what does this say?" read and explain it. Always answer the question they asked first. After answering, you can add a short casual comment like a friend would.
-
-If there is NO caption or question, react casually like a friend:
-- Selfie or person: say things like "wait is this you?", "bro you look fresh 🔥", "caught you chilling 😂"
-- Place or scenery: "where is this?", "this looks calm fr", "yo this place is nice!"
-- Food: react like you are hungry or impressed
-- Meme or funny image: laugh and match the energy
-- Document, receipt, or text: read it and summarize clearly
-- Social media screenshot: talk about what is happening, give your take
-
-Always sound natural and conversational. Use short paragraphs with a blank line between them. No asterisks, hashtags or markdown symbols.`;
-
-// ─── State ────────────────────────────────────────────────────────────────────
-let latestQR      = null;
-let isConnected    = false;
-let sock           = null;
-let conversations  = {};
-let webSessions    = {};
-
-// ─── Fetch with timeout helper (reliability) ──────────────────────────────────
-async function fetchWithTimeout(url, options, ms) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+:root{
+  --bg:#000000;
+  --sb:#000000;
+  --sb-border:rgba(255,255,255,0.06);
+  --surface:rgba(255,255,255,0.04);
+  --surface-h:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.08);
+  --text:#eeeef5;
+  --text-sub:#5a5a72;
+  --text-muted:#70708a;
+  --accent:#7c3aed;
+  --accent-l:#a78bfa;
+  --accent-bg:rgba(124,58,237,0.12);
+  --chip-bg:rgba(255,255,255,0.05);
+  --chip-border:rgba(255,255,255,0.09);
+  --user-bubble:linear-gradient(135deg,#7c3aed,#6366f1);
+  --bot-bubble:rgba(255,255,255,0.05);
+  --bot-border:rgba(255,255,255,0.07);
+  --input-bg:rgba(255,255,255,0.05);
+  --input-border:rgba(255,255,255,0.1);
+}
+body.light{
+  --bg:#f7f7fb;
+  --sb:#ffffff;
+  --sb-border:rgba(0,0,0,0.07);
+  --surface:rgba(0,0,0,0.03);
+  --surface-h:rgba(0,0,0,0.06);
+  --border:rgba(0,0,0,0.08);
+  --text:#111118;
+  --text-sub:#c0c0d0;
+  --text-muted:#888898;
+  --accent-l:#7c3aed;
+  --accent-bg:rgba(124,58,237,0.07);
+  --chip-bg:#ffffff;
+  --chip-border:rgba(0,0,0,0.1);
+  --bot-bubble:#ffffff;
+  --bot-border:rgba(0,0,0,0.08);
+  --input-bg:#ffffff;
+  --input-border:rgba(0,0,0,0.1);
 }
 
-// ─── Search decision (with safer failure default) ─────────────────────────────
-async function shouldSearch(message) {
-  const casual = /^(hi|hey|hello|yo|sup|how far|lol|lmao|thanks|thank you|ok|okay|nice|cool)\b/i;
-  if (casual.test(message.trim()) && message.trim().length < 20) return false;
+html,body{height:100%;height:100dvh;overflow:hidden;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;transition:background .3s,color .3s;}
+.main{height:100%;height:100dvh;}
+.sb{height:100%;height:100dvh;}
 
-  try {
-    const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: CHAT_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'Reply with ONLY one word: SEARCH or CHAT. Say SEARCH if answering accurately requires current facts, specific dates, prices, versions, real people/events, or anything that could be outdated or wrong from memory. Say CHAT for casual conversation, opinions, jokes, or general knowledge that does not change over time.'
-          },
-          { role: 'user', content: message }
-        ],
-        max_tokens: 5,
-        temperature: 0
-      })
-    }, 8000);
-    const data = await res.json();
-    const decision = data.choices?.[0]?.message?.content?.trim().toUpperCase();
-    // If we got a clear CHAT decision, trust it. Anything else (SEARCH, unclear, missing) — search.
-    return decision !== 'CHAT';
-  } catch (e) {
-    console.error('Search classifier failed, defaulting to SEARCH (safer than guessing):', e.message);
-    return true;
-  }
+/* ─── SIDEBAR ─── */
+.sb{
+  width:220px;flex-shrink:0;
+  background:var(--sb);
+  border-right:1px solid var(--sb-border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  transition:background .3s,border-color .3s;
+  z-index:10;
+}
+@media(max-width:768px){
+  .sb{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1),background .3s;z-index:200;}
+  .sb.open{transform:translateX(0);}
+  .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);z-index:199;}
+  .sb-overlay.show{display:block;}
 }
 
-// ─── Search providers: Google primary, Tavily fallback, both timeout-guarded ──
-async function googleSearch(query) {
-  if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) throw new Error('Google Search not configured');
+/* Brand row */
+.sb-brand{
+  display:flex;align-items:center;gap:9px;
+  padding:18px 16px 14px;
+  flex-shrink:0;
+}
+.sb-logo{width:26px;height:26px;flex-shrink:0;}
+.sb-logo img{width:100%;height:100%;object-fit:contain;display:block;}
+.sb-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.02em;}
 
-  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=5`;
-  const res = await fetchWithTimeout(url, {}, 10000);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Google Search API error');
-  if (!data.items || data.items.length === 0) throw new Error('No Google results');
+/* New Chat button */
+.sb-newchat{
+  margin:0 10px 6px;
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:10px;
+  background:var(--accent-bg);border:1px solid rgba(124,58,237,.25);
+  color:var(--accent-l);font-family:inherit;font-size:13.5px;font-weight:600;
+  cursor:pointer;transition:all .2s;text-align:left;width:calc(100% - 20px);
+}
+.sb-newchat:hover{background:rgba(124,58,237,.18);}
+.sb-newchat svg{width:16px;height:16px;flex-shrink:0;}
 
-  return data.items
-    .map(item => `${item.title}: ${item.snippet}`)
-    .join(' | ');
+/* Nav */
+.sb-nav{list-style:none;padding:0 10px;display:flex;flex-direction:column;gap:1px;}
+.nav-btn{
+  display:flex;align-items:center;gap:11px;
+  padding:9px 11px;border-radius:9px;
+  color:var(--text-muted);font-size:13.5px;font-weight:500;
+  cursor:pointer;transition:all .15s;
+  border:none;background:none;width:100%;text-align:left;font-family:inherit;
+}
+.nav-btn:hover{background:var(--surface-h);color:var(--text);}
+.nav-btn.active{background:var(--accent-bg);color:var(--accent-l);}
+.nav-btn svg{width:17px;height:17px;flex-shrink:0;stroke-width:1.75;}
+.nav-more{
+  display:flex;align-items:center;gap:11px;
+  padding:9px 11px;border-radius:9px;
+  color:var(--text-muted);font-size:13.5px;font-weight:500;
+  cursor:pointer;transition:all .15s;
+  border:none;background:none;width:100%;text-align:left;font-family:inherit;
+}
+.nav-more:hover{background:var(--surface-h);color:var(--text);}
+.three-dots{display:flex;gap:3px;align-items:center;}
+.three-dots span{width:4px;height:4px;border-radius:50%;background:currentColor;display:block;}
+
+/* Divider */
+.sb-div{height:1px;background:var(--sb-border);margin:8px 10px;}
+
+/* Recent section */
+.sb-recent{flex:1;overflow-y:auto;padding:0 10px;}
+.sb-recent::-webkit-scrollbar{width:3px;}
+.sb-recent::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px;}
+.recent-label{
+  font-size:11px;font-weight:600;color:var(--text-sub);
+  text-transform:uppercase;letter-spacing:.07em;
+  padding:10px 2px 5px;
+}
+.recent-item{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 8px;border-radius:8px;
+  cursor:pointer;transition:background .15s;
+}
+.recent-item:hover{background:var(--surface-h);}
+.recent-item svg{width:14px;height:14px;flex-shrink:0;color:var(--text-sub);}
+.recent-item span{font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.recent-empty{font-size:12px;color:var(--text-sub);padding:6px 2px;font-style:italic;}
+.view-all-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 2px;font-size:13px;color:var(--accent-l);
+  border:none;background:none;font-family:inherit;font-weight:500;
+  cursor:pointer;margin-top:2px;
+}
+.view-all-btn:hover{opacity:.8;}
+.view-all-btn svg{width:13px;height:13px;}
+
+/* Footer */
+.sb-footer{
+  flex-shrink:0;padding:8px 10px 14px;
+  border-top:1px solid var(--sb-border);
+}
+.user-btn{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:10px;
+  cursor:pointer;transition:background .15s;
+  border:none;background:none;width:100%;text-align:left;font-family:inherit;
+}
+.user-btn:hover{background:var(--surface-h);}
+.user-av{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:12px;font-weight:700;color:#fff;letter-spacing:0;
+}
+.user-info{flex:1;min-width:0;text-align:left;}
+.user-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-plan{font-size:11px;color:var(--accent-l);font-weight:500;margin-top:1px;}
+.user-dots{color:var(--text-muted);}
+.user-dots svg{width:15px;height:15px;}
+
+/* ─── MAIN ─── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative;}
+
+/* Topbar — truly floating over content */
+.topbar{
+  display:flex;align-items:center;justify-content:flex-end;
+  padding:14px 16px 10px;gap:10px;
+  flex-shrink:0;
+  background:transparent;
+  border:none;
+  position:absolute;top:0;right:0;left:0;
+  z-index:20;
+  pointer-events:none; /* let clicks through the gap */
+}
+/* but buttons still clickable */
+.topbar > *{pointer-events:all;}
+.topbar-left{display:none;margin-right:auto;align-items:center;gap:10px;}
+@media(max-width:768px){.topbar-left{display:flex;}}
+.topbar-brand{display:none;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text);}
+@media(max-width:768px){.topbar-brand{display:flex;}}
+.topbar-brand img{width:22px;height:22px;object-fit:contain;}
+.icon-btn{
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(0,0,0,0.88);
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 4px 16px rgba(0,0,0,0.35);
+  color:var(--text-muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+body.light .icon-btn{
+  background:rgba(255,255,255,0.92);border-color:rgba(0,0,0,0.1);
+  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+}
+.icon-btn:hover{background:rgba(50,50,66,0.95);color:var(--text);transform:scale(1.05);}
+body.light .icon-btn:hover{background:rgba(245,245,250,0.98);}
+.icon-btn:active{transform:scale(0.95);}
+.icon-btn svg{width:16px;height:16px;pointer-events:none;}
+.plus-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 18px;border-radius:999px;
+  background:rgba(124,58,237,0.92);
+  border:1px solid rgba(124,58,237,0.5);
+  box-shadow:0 4px 18px rgba(124,58,237,0.4);
+  color:#fff;font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.plus-btn:hover{background:rgba(124,58,237,1);box-shadow:0 6px 24px rgba(124,58,237,0.55);transform:scale(1.03);}
+.plus-btn:active{transform:scale(0.97);}
+.plus-btn svg{width:13px;height:13px;}
+
+/* ─── MESSAGES ─── */
+.msgs-outer{
+  flex:1;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:68px; /* space for floating topbar */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 60px,
+    black 110px,
+    black calc(100% - 0px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 60px,
+    black 110px,
+    black calc(100% - 0px)
+  );
+}
+.msgs-outer::-webkit-scrollbar{width:4px;}
+.msgs-outer::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:4px;}
+#msgs{
+  width:100%;max-width:700px;
+  padding:24px 20px 8px;
+  display:flex;flex-direction:column;gap:14px;
+  flex:1;
+  min-height:100%;
 }
 
-async function tavilySearch(query) {
-  if (!TAVILY_API_KEY) throw new Error('Tavily not configured');
+/* ── Welcome ── */
+.welcome{
+  display:flex;flex-direction:column;
+  justify-content:flex-end;
+  align-items:center;
+  flex:1;
+  padding:0 0 32px 0;
+  width:100%;
+}
+@keyframes fadein{to{opacity:1;}}
+@keyframes cardup{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
 
-  const res = await fetchWithTimeout('https://api.tavily.com/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_key: TAVILY_API_KEY,
-      query,
-      search_depth: 'basic',
-      max_results: 5
-    })
-  }, 10000);
-  const data = await res.json();
-  if (!res.ok) throw new Error('Tavily search failed');
-  return data.results.map(r => `${r.title}: ${r.content}`).join(' | ');
+/* ── Suggestion cards ── */
+.suggestions{
+  display:flex;flex-direction:row;
+  flex-wrap:nowrap;
+  gap:14px;
+  padding:0 24px 4px;
+  justify-content:center;
+  align-items:stretch;
+  width:100%;
+  max-width:900px;
+  margin:0 auto;
+  overflow:visible;
+  box-sizing:border-box;
+}
+.sug-item:nth-child(1){animation:cardup .35s ease .05s both;}
+.sug-item:nth-child(2){animation:cardup .35s ease .12s both;}
+.sug-item:nth-child(3){animation:cardup .35s ease .19s both;}
+.sug-item:nth-child(4){animation:cardup .35s ease .26s both;}
+.sug-item:nth-child(5){animation:cardup .35s ease .33s both;}
+@keyframes cardup{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+.sug-item{
+  display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:space-between;
+  padding:18px 16px 18px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.09);
+  box-shadow:0 6px 24px rgba(0,0,0,0.35),0 1px 4px rgba(0,0,0,0.2);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  cursor:pointer;
+  width:160px;height:160px;flex-shrink:0;
+  text-align:left;font-family:inherit;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),
+             box-shadow .22s ease,
+             border-color .22s ease;
+}
+body.light .sug-item{
+  background:rgba(255,255,255,0.95);
+  border-color:rgba(0,0,0,0.07);
+  box-shadow:0 4px 18px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.05);
+}
+.sug-item:hover{
+  transform:translateY(-4px) scale(1.03);
+  box-shadow:0 12px 32px rgba(0,0,0,0.45),0 2px 8px rgba(124,58,237,0.15);
+  border-color:rgba(124,58,237,0.3);
+}
+body.light .sug-item:hover{
+  box-shadow:0 8px 24px rgba(0,0,0,0.1),0 2px 8px rgba(124,58,237,0.12);
+  border-color:rgba(124,58,237,0.25);
+}
+.sug-item:active{transform:scale(0.96);}
+
+.sug-icon{
+  width:40px;height:40px;border-radius:12px;
+  background:rgba(124,58,237,0.14);
+  border:none;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-bottom:auto;
+}
+body.light .sug-icon{background:rgba(124,58,237,0.1);}
+.sug-icon svg{width:20px;height:20px;stroke:var(--accent-l);pointer-events:none;}
+
+.sug-texts{display:flex;flex-direction:column;gap:4px;width:100%;}
+.sug-title{
+  font-size:13.5px;font-weight:700;
+  color:var(--text);line-height:1.25;
+}
+body.light .sug-title{color:#111;}
+.sug-sub{
+  font-size:11.5px;font-weight:400;
+  color:var(--text-muted);line-height:1.3;
+}
+body.light .sug-sub{color:#888;}
+
+/* Bubbles */
+.row{display:flex;gap:10px;opacity:0;animation:slideup .25s ease forwards;}
+.row.user{justify-content:flex-end;}
+.row.bot{justify-content:flex-start;}
+@keyframes slideup{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.bavatar{width:28px;height:28px;flex-shrink:0;align-self:flex-end;}
+.bavatar img{width:100%;height:100%;object-fit:contain;border-radius:50%;}
+.bcol{display:flex;flex-direction:column;gap:3px;max-width:76%;}
+.bubble{padding:11px 16px;border-radius:18px;font-size:14px;line-height:1.65;word-break:break-word;}
+.row.user .bubble{background:var(--user-bubble);color:#fff;border-bottom-right-radius:4px;}
+.row.bot .bubble{background:var(--bot-bubble);color:var(--text);border:1px solid var(--bot-border);border-bottom-left-radius:4px;}
+.img-bubble{padding:0!important;background:none!important;border:none!important;overflow:hidden;border-radius:14px;}
+.img-bubble img{display:block;max-width:100%;border-radius:14px;max-height:340px;object-fit:cover;}
+.img-caption{padding:7px 12px 6px;font-size:13px;color:#fff;background:var(--user-bubble);border-bottom-left-radius:12px;border-bottom-right-radius:12px;}
+.voice-bubble{display:flex;align-items:center;gap:10px;padding:10px 14px;min-width:180px;}
+.vplay{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.vwave{display:flex;align-items:center;gap:2px;flex:1;height:24px;}
+.vbar{width:3px;border-radius:3px;background:rgba(255,255,255,.6);flex-shrink:0;}
+.btime{font-size:10px;color:var(--text-sub);padding:0 3px;}
+.row.user .btime{text-align:right;}
+
+/* Feedback */
+.feedback{display:flex;align-items:center;gap:4px;margin-top:5px;padding:0 2px;}
+.fbtn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-sub);cursor:pointer;padding:4px 8px;font-size:12px;display:flex;align-items:center;gap:4px;transition:all .18s;font-family:inherit;}
+.fbtn:hover{border-color:rgba(124,58,237,.4);color:var(--accent-l);background:var(--accent-bg);}
+.fbtn.liked{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08);}
+.fbtn.disliked{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.08);}
+.fbtn.copied{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08);}
+.fbtn svg{width:12px;height:12px;pointer-events:none;}
+
+/* Typing */
+.typing{background:var(--bot-bubble);border:1px solid var(--bot-border);border-radius:18px;border-bottom-left-radius:4px;padding:12px 16px;display:flex;gap:5px;align-items:center;}
+.td{width:6px;height:6px;border-radius:50%;background:var(--text-sub);animation:tbounce 1.2s infinite;}
+.td:nth-child(2){animation-delay:.2s;}.td:nth-child(3){animation-delay:.4s;}
+@keyframes tbounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);background:var(--accent-l);}}
+
+/* Recording */
+#recrow{display:none;align-items:center;gap:10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.22);border-radius:14px;padding:8px 12px;margin-bottom:8px;}
+#recrow.show{display:flex;}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;animation:rpulse 1s infinite;}
+@keyframes rpulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+.rec-time{font-size:14px;font-weight:600;color:#ef4444;font-variant-numeric:tabular-nums;flex-shrink:0;min-width:38px;}
+.rec-wave{display:flex;align-items:center;gap:2px;flex:1;height:26px;overflow:hidden;}
+.rwb{width:3px;border-radius:3px;background:#ef4444;animation:rwav .6s ease-in-out infinite alternate;flex-shrink:0;opacity:.55;}
+@keyframes rwav{from{height:3px;}to{height:var(--h,16px);}}
+.rwb:nth-child(2n){animation-delay:.15s;}.rwb:nth-child(3n){animation-delay:.3s;}
+.rec-del{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.rec-del:hover{color:#ef4444;}
+.rec-del svg{width:14px;height:14px;pointer-events:none;}
+.rec-send{width:32px;height:32px;border-radius:50%;background:var(--accent);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.rec-send svg{width:14px;height:14px;pointer-events:none;}
+
+/* ── Floating input bar ── */
+.footer-wrap{
+  flex-shrink:0;
+  padding:8px 16px 20px;
+  display:flex;flex-direction:column;align-items:center;
+  background:transparent;
+  position:relative;
+  z-index:10;
+}
+.footer-inner{
+  width:92%;
+  max-width:480px;
+  margin:0 auto;
+  transition:max-width .35s cubic-bezier(.34,1.56,.64,1), width .35s cubic-bezier(.34,1.56,.64,1);
+}
+.footer-inner:focus-within{
+  width:100%;
+  max-width:640px;
+}
+.footer-hint{text-align:center;font-size:11px;color:var(--text-sub);padding-top:8px;opacity:.7;}
+
+/* Compact pill — no border, no purple glow, just a soft shadow / glass finish */
+.input-wrap{
+  background:rgba(0,0,0,0.9);
+  border:none;
+  border-radius:999px;
+  padding:6px 6px 6px 18px;
+  display:flex;align-items:center;gap:2px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25);
+  transition:box-shadow .3s ease, min-height .3s ease;
+  min-height:46px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+body.light .input-wrap{
+  background:rgba(255,255,255,0.92);
+  box-shadow:0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+}
+.input-wrap:focus-within{
+  box-shadow:0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+  min-height:50px;
+}
+body.light .input-wrap:focus-within{
+  box-shadow:0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
 }
 
-async function webSearch(query) {
-  try {
-    const results = await googleSearch(query);
-    console.log('Search source: Google');
-    return results;
-  } catch (googleErr) {
-    console.error('Google Search failed, trying Tavily:', googleErr.message);
-    try {
-      const results = await tavilySearch(query);
-      console.log('Search source: Tavily');
-      return results;
-    } catch (tavilyErr) {
-      console.error('Tavily also failed:', tavilyErr.message);
-      return null;
-    }
+#msginput{
+  flex:1;background:none;border:none;outline:none;
+  color:var(--text);font-family:inherit;font-size:15px;
+  resize:none;max-height:140px;line-height:1.55;
+  padding:0 4px;min-height:22px;
+}
+#msginput::placeholder{color:rgba(255,255,255,0.28);}
+body.light #msginput::placeholder{color:rgba(0,0,0,0.3);}
+
+/* icon buttons */
+.iact{
+  width:36px;height:36px;border-radius:50%;
+  background:none;border:none;
+  color:rgba(255,255,255,0.5);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .18s;flex-shrink:0;
+}
+body.light .iact{color:rgba(0,0,0,0.4);}
+.iact:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.07);}
+body.light .iact:hover{color:rgba(0,0,0,0.8);background:rgba(0,0,0,0.06);}
+.iact:active{transform:scale(0.9);}
+.iact svg{width:18px;height:18px;pointer-events:none;}
+
+/* + circle button */
+.iact-plus{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,255,255,0.13);
+  color:rgba(255,255,255,0.9);
+  flex-shrink:0;
+}
+body.light .iact-plus{background:rgba(0,0,0,0.09);color:#111;}
+.iact-plus:hover{background:rgba(255,255,255,0.22)!important;}
+body.light .iact-plus:hover{background:rgba(0,0,0,0.15)!important;}
+.iact-plus svg{width:16px;height:16px;}
+
+/* Send button — flush inside the bar */
+#sendbtn{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--accent);border:none;cursor:pointer;
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 4px 14px rgba(124,58,237,0.5);
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s, opacity .15s;
+}
+#sendbtn:hover{
+  transform:scale(1.1);
+  box-shadow:0 6px 20px rgba(124,58,237,0.65);
+}
+#sendbtn:active{
+  transform:scale(1.22);
+  box-shadow:0 8px 28px rgba(124,58,237,0.8);
+}
+#sendbtn:disabled{
+  opacity:.28;cursor:not-allowed;
+  transform:none;box-shadow:none;
+}
+#sendbtn svg{width:16px;height:16px;pointer-events:none;}
+@keyframes sendbounce{
+  0%{transform:scale(1);}
+  40%{transform:scale(1.28);}
+  70%{transform:scale(0.92);}
+  100%{transform:scale(1);}
+}
+#sendbtn.sending{animation:sendbounce .4s cubic-bezier(.34,1.56,.64,1);}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:600px){
+  html,body{height:100%;height:100dvh;}
+  .main{width:100%;min-width:0;}
+
+  .topbar{padding:8px 12px;gap:8px;}
+  .plus-btn{padding:6px 12px;font-size:12px;}
+  .plus-btn span{display:none;}
+
+  #msgs{padding:16px 12px 6px;gap:10px;}
+  .bcol{max-width:88%;}
+
+  .welcome{padding:0 0 14px;justify-content:flex-end;}
+  .suggestions{
+    overflow-x:auto;overflow-y:hidden;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    padding:0 14px 4px;
+    gap:10px;
+    max-width:100%;width:100%;
+    scrollbar-width:none;
   }
+  .suggestions::-webkit-scrollbar{display:none;}
+  .sug-item{width:128px;height:128px;padding:14px 13px;border-radius:18px;flex-shrink:0;}
+  .sug-icon{width:34px;height:34px;border-radius:10px;}
+  .sug-icon svg{width:16px;height:16px;}
+  .sug-title{font-size:12px;}
+  .sug-sub{font-size:11px;}
+  .msgs-outer{padding-top:60px;}
+
+  .footer-wrap{padding:6px 12px 18px;}
+  .footer-hint{font-size:10.5px;padding-top:6px;}
+  .footer-inner{width:88%;max-width:340px;}
+  .footer-inner:focus-within{width:96%;max-width:520px;}
+  .input-wrap{padding:6px 6px 6px 16px;min-height:44px;}
+  #msginput{font-size:15px;}
+  .iact{width:34px;height:34px;}
+  .iact svg{width:17px;height:17px;}
+  .iact-plus{width:32px;height:32px;}
+  #sendbtn{width:34px;height:34px;}
+  #sendbtn svg{width:15px;height:15px;}
+
+  .bubble{font-size:13.5px;padding:10px 14px;}
+  .btime{font-size:9.5px;}
+  .bavatar{width:24px;height:24px;}
+
+  .fbtn{padding:3px 6px;font-size:11px;}
+
+  #recrow{padding:6px 10px;gap:8px;}
+  .rec-time{font-size:13px;}
+
+  .prev-box,.fb-box{border-radius:16px;padding:14px;}
 }
 
-// ─── Groq helpers, with one retry on transient failure ────────────────────────
-async function askGroqOnce(messages) {
-  const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: CHAT_MODEL,
-      messages,
-      max_tokens: 1200,
-      temperature: 0.7,
-      include_reasoning: false
-    })
-  }, 30000);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Groq API error');
-  return data.choices[0].message.content;
-}
+/* Modals */
+#imgpreview{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;}
+#imgpreview.show{display:flex;}
+.prev-box{background:var(--sb);border:1px solid var(--border);border-radius:20px;padding:16px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;}
+.prev-img{width:100%;border-radius:12px;max-height:300px;object-fit:contain;display:block;}
+.prev-caption{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:none;width:100%;}
+.prev-caption::placeholder{color:var(--text-muted);}
+.prev-actions{display:flex;gap:8px;}
+.prev-cancel{flex:1;padding:10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);font-family:inherit;font-size:13px;cursor:pointer;}
+.prev-send{flex:2;padding:10px;border-radius:12px;background:var(--accent);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+#fbmodal{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
+#fbmodal.show{display:flex;}
+.fb-box{background:var(--sb);border:1px solid var(--border);border-radius:20px;padding:20px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;}
+.fb-hd{display:flex;align-items:center;gap:10px;}
+.fb-emoji{font-size:22px;}
+.fb-title{font-size:15px;font-weight:600;color:var(--text);}
+.fb-sub{font-size:12px;color:var(--text-muted);margin-top:1px;}
+.fb-ta{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:none;width:100%;line-height:1.5;transition:border-color .2s;}
+.fb-ta:focus{border-color:rgba(124,58,237,.4);}
+.fb-ta::placeholder{color:var(--text-muted);}
+.fb-acts{display:flex;gap:8px;}
+.fb-cancel{flex:1;padding:10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);font-family:inherit;font-size:13px;cursor:pointer;}
+.fb-submit{flex:2;padding:10px;border-radius:12px;background:var(--accent);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.fb-submit:disabled{opacity:.5;cursor:not-allowed;}
+#imginput{display:none;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
 
-async function askGroq(messages) {
-  try {
-    return await askGroqOnce(messages);
-  } catch (e) {
-    console.error('Groq call failed, retrying once:', e.message);
-    // Brief pause before retry so we don't hammer a struggling API
-    await new Promise(r => setTimeout(r, 800));
-    return await askGroqOnce(messages);
-  }
-}
+<div class="sb-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
 
-async function askGroqVision(base64Image, mimeType, caption) {
-  const models = [VISION_MODEL, VISION_FALLBACK];
+<!-- ══ SIDEBAR ══ -->
+<aside class="sb" id="sidebar">
 
-  for (const model of models) {
-    try {
-      const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: VISION_PROMPT + (caption ? `\n\nUser question/caption: "${caption}"` : '')
-              },
-              {
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64Image}` }
-              }
-            ]
-          }],
-          max_tokens: 400,
-          temperature: 0.8
-        })
-      }, 25000);
+  <!-- Brand -->
+  <div class="sb-brand">
+    <div class="sb-logo"><img id="logoimg" src="data:image/png;base64,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" alt="Vektra AI"/></div>
+    <span class="sb-name">Vektra AI</span>
+  </div>
 
-      const data = await res.json();
-      if (!res.ok) {
-        console.error(`Vision model ${model} error:`, data.error?.message);
-        continue;
-      }
-      console.log(`Vision handled by: ${model}`);
-      return data.choices[0].message.content;
-    } catch (e) {
-      console.error(`Vision model ${model} failed:`, e.message);
-    }
-  }
+  <!-- New Chat -->
+  <button class="sb-newchat" onclick="clearChat();closeSidebar()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    New Chat
+  </button>
 
-  throw new Error('All vision models failed');
-}
+  <!-- Nav -->
+  <ul class="sb-nav">
+    <li><button class="nav-btn" onclick="closeSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat
+    </button></li>
+    <li><button class="nav-btn" onclick="closeSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Library
+    </button></li>
+    <li><button class="nav-btn" onclick="closeSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Projects
+    </button></li>
+    <li><button class="nav-btn" onclick="closeSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Agents
+    </button></li>
+    <li><button class="nav-more" onclick="closeSidebar()">
+      <div class="three-dots"><span></span><span></span><span></span></div>More
+    </button></li>
+  </ul>
 
-async function getReply(sessionHistory, message, useSearch) {
-  if (useSearch) {
-    const searchResults = await webSearch(message);
-    if (searchResults) {
-      return await askGroq([
-        { role: 'system', content: `${SEARCH_SYSTEM_PROMPT} Here are the search results: ${searchResults}` },
-        { role: 'user', content: message }
-      ]);
-    }
-    return await askGroq([
-      { role: 'system', content: `${SYSTEM_PROMPT} Note: web search is unavailable right now. If this question needs current/factual info you are not certain about, say so briefly instead of guessing.` },
-      ...sessionHistory
-    ]);
-  }
-  return await askGroq([
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...sessionHistory
-  ]);
-}
+  <div class="sb-div"></div>
 
-function trimHistory(history) {
-  if (history.length > MAX_HISTORY) return history.slice(-MAX_HISTORY);
-  return history;
-}
+  <!-- Recent chats -->
+  <div class="sb-recent" id="sbRecent">
+    <div class="recent-label">Recent</div>
+    <div id="recentList"><div class="recent-empty">No recent chats yet.</div></div>
+    <button class="view-all-btn" id="viewAllBtn" style="display:none;">
+      View all
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
 
-// ─── WhatsApp Bot ─────────────────────────────────────────────────────────────
-async function connectToWhatsApp() {
-  if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+  <!-- Footer -->
+  <div class="sb-footer">
+    <button class="user-btn" onclick="toggleTheme()">
+      <div class="user-av">V</div>
+      <div class="user-info">
+        <div class="user-name">My Account</div>
+        <div class="user-plan">Toggle Theme</div>
+      </div>
+      <div class="user-dots">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+      </div>
+    </button>
+  </div>
 
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
-  const { version } = await fetchLatestBaileysVersion();
-  const logger = pino({ level: 'silent' });
+</aside>
 
-  sock = makeWASocket({
-    version,
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger)
-    },
-    logger,
-    printQRInTerminal: false,
-    generateHighQualityLinkPreview: false,
-    browser: ['Vektra Bot', 'Chrome', '120.0.0'],
-    connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 60000,
-    keepAliveIntervalMs: 10000,
-    retryRequestDelayMs: 2000,
-    getMessage: async () => ({ conversation: '' })
-  });
+<!-- ══ MAIN ══ -->
+<div class="main">
 
-  sock.ev.on('creds.update', saveCreds);
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" onclick="openSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-brand">
+        <img id="topbarLogo" src="data:image/png;base64,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" alt="Vektra AI"/>
+        Vektra AI
+      </div>
+    </div>
+    <button class="plus-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Get Plus
+    </button>
+    <button class="icon-btn" id="themebtn" onclick="toggleTheme()" title="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      latestQR = qr;
-      isConnected = false;
-      console.log('QR ready — visit the bot URL to scan.');
-    }
-    if (connection === 'open') {
-      latestQR = null;
-      isConnected = true;
-      console.log('WhatsApp bot is online!');
-    }
-    if (connection === 'close') {
-      isConnected = false;
-      latestQR = null;
-      const code = lastDisconnect?.error instanceof Boom
-        ? lastDisconnect.error.output?.statusCode : 0;
-      const shouldReconnect = code !== DisconnectReason.loggedOut;
-      console.log(`Connection closed. Code: ${code} | Reconnect: ${shouldReconnect}`);
-      if (shouldReconnect) {
-        setTimeout(connectToWhatsApp, 5000);
-      } else {
-        console.log('Logged out — clearing auth...');
-        fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-        setTimeout(connectToWhatsApp, 3000);
-      }
-    }
-  });
+  <!-- Messages -->
+  <div class="msgs-outer" id="msgsOuter">
+    <div id="msgs">
+      <div class="welcome" id="welcome">
+        <div class="suggestions" id="sugCards">
+      <button class="sug-item" onclick="sendMsg('Search the web for latest news')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Search the web</span><span class="sug-sub">Get real-time info</span></div>
+      </button>
+      <button class="sug-item" onclick="document.getElementById('imginput').click()">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Analyze image</span><span class="sug-sub">Visualize anything</span></div>
+      </button>
+      <button class="sug-item" onclick="sendMsg('Help me brainstorm ideas')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 6a6 6 0 1 0 6 6"/><path d="M18 12h4"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Brainstorm ideas</span><span class="sug-sub">Spark creativity</span></div>
+      </button>
+      <button class="sug-item" onclick="sendMsg('Help me write something')">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Write something</span><span class="sug-sub">Essays, posts & more</span></div>
+      </button>
+      <button class="sug-item" onclick="startRec()">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+        <div class="sug-texts"><span class="sug-title">Voice message</span><span class="sug-sub">Speak to Vektra</span></div>
+      </button>
+    </div>
+      </div>
+    </div>
+  </div>
 
-  sock.ev.on('messages.upsert', async ({ messages: msgs, type }) => {
-    if (type !== 'notify') return;
+  <!-- Footer -->
+  <div class="footer-wrap">
 
-    for (const message of msgs) {
-      try {
-        if (!message.message) continue;
-        if (message.key.fromMe) continue;
-        if (isJidBroadcast(message.key.remoteJid)) continue;
-        if (message.key.remoteJid === 'status@broadcast') continue;
 
-        const jid = message.key.remoteJid;
-        const msgContent = message.message;
+    <div class="footer-inner">
+      <div id="recrow">
+        <div class="rec-dot"></div>
+        <span class="rec-time" id="rectime">0:00</span>
+        <div class="rec-wave" id="recwave"></div>
+        <button class="rec-del" onclick="cancelRec()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+        <button class="rec-send" onclick="stopAndSendRec()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-wrap irow">
+        <input type="file" id="imginput" accept="image/*" onchange="handleImgSelect(event)"/>
+        <!-- + button left -->
+        <button class="iact iact-plus" onclick="document.getElementById('imginput').click()" title="Attach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <textarea id="msginput" rows="1" placeholder="Ask Vektra AI..." oninput="resizeInp(this)" onkeydown="onKey(event)"></textarea>
+        <!-- mic right -->
+        <button class="iact" id="micbtn" onclick="startRec()" title="Voice message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <!-- send = colored circle -->
+        <button id="sendbtn" onclick="sendMsg()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="footer-hint">Vektra AI can make mistakes. Check important info.</div>
+  </div>
 
-        await sock.readMessages([message.key]);
-        await sock.sendPresenceUpdate('composing', jid);
+</div>
 
-        if (!conversations[jid]) conversations[jid] = [];
+<!-- Feedback modal -->
+<div id="fbmodal">
+  <div class="fb-box">
+    <div class="fb-hd">
+      <div class="fb-emoji" id="fb-emoji">👍</div>
+      <div>
+        <div class="fb-title" id="fb-title">What did you like?</div>
+        <div class="fb-sub">Your feedback goes directly to the developer</div>
+      </div>
+    </div>
+    <textarea class="fb-ta" id="fb-text" rows="4" placeholder="Tell us what you think... (optional)"></textarea>
+    <div class="fb-acts">
+      <button class="fb-cancel" onclick="closeFbModal()">Cancel</button>
+      <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Send Feedback</button>
+    </div>
+  </div>
+</div>
 
-        const isImage   = !!msgContent.imageMessage;
-        const isSticker = !!msgContent.stickerMessage;
-        if (isImage || isSticker) {
-          try {
-            const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-            const buffer = await downloadMediaMessage(
-              message, 'buffer', {},
-              { logger, reuploadRequest: sock.updateMediaMessage }
-            );
-            const mimeType = isSticker ? 'image/webp' : (msgContent.imageMessage?.mimetype || 'image/jpeg');
-            const base64   = buffer.toString('base64');
-            const caption  = isImage ? (msgContent.imageMessage?.caption || '') : '';
-            const reply    = await askGroqVision(base64, mimeType, caption);
-            await sock.sendMessage(jid, { text: reply }, { quoted: message });
-          } catch (e) {
-            console.error('Vision error:', e.message);
-            await sock.sendMessage(jid, { text: 'Lol I saw it but my eyes glitched 😅 send again!' }, { quoted: message });
-          }
-          await sock.sendPresenceUpdate('paused', jid);
-          continue;
-        }
+<!-- Image preview -->
+<div id="imgpreview">
+  <div class="prev-box">
+    <img class="prev-img" id="previmg" src="" alt="preview"/>
+    <textarea class="prev-caption" id="prevcaption" placeholder="Add a caption..." rows="2"></textarea>
+    <div class="prev-actions">
+      <button class="prev-cancel" onclick="cancelPreview()">Cancel</button>
+      <button class="prev-send" onclick="confirmSendImage()">Send</button>
+    </div>
+  </div>
+</div>
 
-        if (!!msgContent.audioMessage) {
-          try {
-            const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-            const buffer    = await downloadMediaMessage(message, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
-            const audioBlob = new Blob([buffer], { type: msgContent.audioMessage?.mimetype || 'audio/ogg' });
-            const formData  = new FormData();
-            formData.append('file', audioBlob, 'audio.ogg');
-            formData.append('model', 'whisper-large-v3');
-            formData.append('response_format', 'json');
+<script>
+var API = 'https://vektrastudio-bot.onrender.com';
+var SID = 'web_' + Math.random().toString(36).slice(2, 9);
+var busy = false;
+var isLight = localStorage.getItem('vtheme') === 'light';
+var recorder = null, recChunks = [], recInterval = null, recSecs = 0, recStream = null;
+var recentChats = [];
 
-            const transcribeRes  = await fetchWithTimeout('https://api.groq.com/openai/v1/audio/transcriptions', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
-              body: formData
-            }, 25000);
-            const transcribeData = await transcribeRes.json();
-            if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
+var inp = document.getElementById('msginput');
+var sbtn = document.getElementById('sendbtn');
+var msgs = document.getElementById('msgs');
 
-            const text = transcribeData.text?.trim();
-            if (!text) {
-              await sock.sendMessage(jid, { text: 'I could not hear anything in that voice note 🎤' }, { quoted: message });
-            } else {
-              conversations[jid].push({ role: 'user', content: text });
-              conversations[jid] = trimHistory(conversations[jid]);
-              const reply = await getReply(conversations[jid], text, await shouldSearch(text));
-              conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
-              await sock.sendMessage(jid, { text: reply }, { quoted: message });
-            }
-          } catch (e) {
-            console.error('Voice error:', e.message);
-            await sock.sendMessage(jid, { text: 'Could not process your voice note, try again! 😅' }, { quoted: message });
-          }
-          await sock.sendPresenceUpdate('paused', jid);
-          continue;
-        }
+if (isLight) document.body.classList.add('light');
 
-        const text = (
-          msgContent.conversation ||
-          msgContent.extendedTextMessage?.text || ''
-        ).trim();
-
-        if (!text) { await sock.sendPresenceUpdate('paused', jid); continue; }
-
-        if (text === '/clear') {
-          conversations[jid] = [];
-          await sock.sendMessage(jid, { text: 'Memory cleared! Fresh start 🧹' }, { quoted: message });
-          await sock.sendPresenceUpdate('paused', jid);
-          continue;
-        }
-        if (text === '/help') {
-          await sock.sendMessage(jid, { text: 'Commands:\n/clear - Clear chat memory\n/help - Show this message\n\nJust type normally to chat! 😊' }, { quoted: message });
-          await sock.sendPresenceUpdate('paused', jid);
-          continue;
-        }
-
-        conversations[jid].push({ role: 'user', content: text });
-        conversations[jid] = trimHistory(conversations[jid]);
-
-        const reply = await getReply(conversations[jid], text, await shouldSearch(text));
-        conversations[jid].push({ role: 'assistant', content: reply.slice(0, 150) });
-
-        await sock.sendMessage(jid, { text: reply }, { quoted: message });
-        await sock.sendPresenceUpdate('paused', jid);
-
-      } catch (e) {
-        console.error('Message handling error:', e.message);
-        try {
-          await sock.sendMessage(message.key.remoteJid, { text: 'Something went wrong on my end, try that again in a sec 😅' }, { quoted: message });
-        } catch (sendErr) {
-          console.error('Could not even send the error message:', sendErr.message);
-        }
-      }
-    }
-  });
-}
-
-// ─── HTTP Server ──────────────────────────────────────────────────────────────
-const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
-
-  if (req.method === 'POST' && req.url === '/chat') {
-    let body = '';
-    req.on('data', c => { body += c; });
-    req.on('end', async () => {
-      try {
-        const { message, sessionId } = JSON.parse(body);
-        if (!message?.trim()) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Message is required' }));
-        }
-        const sid = sessionId || 'default';
-        if (!webSessions[sid]) webSessions[sid] = [];
-
-        webSessions[sid].push({ role: 'user', content: message });
-        webSessions[sid] = trimHistory(webSessions[sid]);
-
-        const reply = await getReply(webSessions[sid], message, await shouldSearch(message));
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 150) });
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply }));
-      } catch (e) {
-        console.error('Web chat error:', e.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Something went wrong, try again!' }));
-      }
-    });
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/clear') {
-    let body = '';
-    req.on('data', c => { body += c; });
-    req.on('end', () => {
-      try {
-        const { sessionId } = JSON.parse(body || '{}');
-        webSessions[sessionId || 'default'] = [];
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'Memory cleared!' }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid request' }));
-      }
-    });
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/vision') {
-    let body = '';
-    req.on('data', c => { body += c; });
-    req.on('end', async () => {
-      try {
-        const { image, mimeType, caption, sessionId } = JSON.parse(body);
-        if (!image) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Image data required' }));
-        }
-        const sid = sessionId || 'default';
-        if (!webSessions[sid]) webSessions[sid] = [];
-
-        const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
-
-        webSessions[sid].push({ role: 'user', content: caption ? `I sent you an image with caption: ${caption}` : 'I sent you an image' });
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
-        webSessions[sid] = trimHistory(webSessions[sid]);
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply }));
-      } catch (e) {
-        console.error('Vision endpoint error:', e.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Could not analyze image. Please try again.' }));
-      }
-    });
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/voice') {
-    let body = '';
-    req.on('data', c => { body += c; });
-    req.on('end', async () => {
-      try {
-        const { audio, mimeType, sessionId } = JSON.parse(body);
-        if (!audio) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Audio data required' }));
-        }
-        const sid = sessionId || 'default';
-        if (!webSessions[sid]) webSessions[sid] = [];
-
-        const audioBuffer = Buffer.from(audio, 'base64');
-        const audioBlob   = new Blob([audioBuffer], { type: mimeType || 'audio/webm' });
-        const formData    = new FormData();
-        formData.append('file', audioBlob, 'audio.webm');
-        formData.append('model', 'whisper-large-v3');
-        formData.append('response_format', 'json');
-
-        const transcribeRes  = await fetchWithTimeout('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
-          body: formData
-        }, 25000);
-        const transcribeData = await transcribeRes.json();
-        if (!transcribeRes.ok) throw new Error(transcribeData.error?.message || 'Transcription failed');
-
-        const text = transcribeData.text?.trim();
-        if (!text) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ reply: 'I could not hear anything in that voice message 🎤' }));
-        }
-
-        webSessions[sid].push({ role: 'user', content: text });
-        webSessions[sid] = trimHistory(webSessions[sid]);
-
-        const reply = await getReply(webSessions[sid], text, await shouldSearch(text));
-        webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 300) });
-        webSessions[sid] = trimHistory(webSessions[sid]);
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply, transcribed: text }));
-      } catch (e) {
-        console.error('Voice endpoint error:', e.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Could not process voice message.' }));
-      }
-    });
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/feedback') {
-    let body = '';
-    req.on('data', c => { body += c; });
-    req.on('end', async () => {
-      try {
-        const { type, message, comment, sessionId, time } = JSON.parse(body);
-        const emoji   = type === 'thumbs_up' ? '👍' : '👎';
-        const subject = `${emoji} Vektra Feedback: ${type.replace('_', ' ')}`;
-        const text    = `Feedback: ${emoji} ${type.toUpperCase()}\n\nComment:\n${comment || '(none)'}\n\nBot Message:\n${message}\n\nSession: ${sessionId}\nTime: ${time}`;
-
-        if (process.env.RESEND_API_KEY) {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: 'Vektra Bot <onboarding@resend.dev>',
-              to: ['abdulmalikoyebolu3@gmail.com'],
-              subject,
-              text
-            })
-          });
-        } else {
-          console.log('RESEND_API_KEY not set — feedback logged here instead:', text);
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        console.error('Feedback error:', e.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Failed to send feedback' }));
-      }
-    });
-    return;
-  }
-
-  if (req.method === 'GET' && req.url === '/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'online',
-      whatsapp: isConnected,
-      search: {
-        google: !!(GOOGLE_API_KEY && GOOGLE_CSE_ID),
-        tavily: !!TAVILY_API_KEY
-      },
-      feedbackEmail: !!process.env.RESEND_API_KEY
-    }));
-    return;
-  }
-
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  try {
-    res.end(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
-  } catch (e) {
-    res.end('<h1>index.html not found. Make sure it exists in the same folder.</h1>');
-  }
+window.addEventListener('load', function() {
+  var logo = document.getElementById('logoimg').src;
+  var tl = document.getElementById('topbarLogo');
+  if (tl) tl.src = logo;
+  var h = new Date().getHours();
+  var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  var wg = document.getElementById('welcomeGreeting');
+  if (wg) wg.textContent = g + '!';
+  updateThemeBtn();
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Vision model: ${VISION_MODEL} (fallback: ${VISION_FALLBACK})`);
-  console.log(`Search: Google=${!!(GOOGLE_API_KEY && GOOGLE_CSE_ID)} Tavily=${!!TAVILY_API_KEY}`);
-  console.log(`Feedback email: ${!!process.env.RESEND_API_KEY}`);
-  connectToWhatsApp();
-});
+function toggleTheme() {
+  isLight = !isLight;
+  localStorage.setItem('vtheme', isLight ? 'light' : 'dark');
+  document.body.classList.toggle('light', isLight);
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  var btn = document.getElementById('themebtn');
+  if (!btn) return;
+  if (isLight) {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  }
+}
 
-process.on('unhandledRejection', r => console.error('Unhandled Rejection:', r));
-process.on('uncaughtException',  e => console.error('Uncaught Exception:', e.message));
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sbOverlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sbOverlay').classList.remove('show'); }
+
+function addRecentChat(title) {
+  recentChats = recentChats.filter(function(t) { return t !== title; });
+  recentChats.unshift(title);
+  if (recentChats.length > 6) recentChats = recentChats.slice(0, 6);
+  renderRecent();
+}
+function renderRecent() {
+  var list = document.getElementById('recentList');
+  var vab = document.getElementById('viewAllBtn');
+  if (!recentChats.length) {
+    list.innerHTML = '<div class="recent-empty">No recent chats yet.</div>';
+    if (vab) vab.style.display = 'none';
+    return;
+  }
+  var icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  list.innerHTML = recentChats.slice(0, 5).map(function(t) {
+    return '<div class="recent-item" onclick="closeSidebar()">' + icon + '<span>' + t + '</span></div>';
+  }).join('');
+  if (vab) vab.style.display = recentChats.length > 5 ? 'flex' : 'none';
+}
+
+inp.addEventListener('input', function() { sbtn.disabled = !inp.value.trim() || busy; });
+function resizeInp(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
+function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sbtn.disabled) sendMsg(); } }
+function getTime() { return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function getLogo() { return document.getElementById('logoimg').src; }
+function hideWelcome() {
+  var w = document.getElementById('welcome');
+  if(w){ w.style.display = 'none'; w.style.opacity = '1'; w.style.transition = 'none'; }
+}
+
+function sendChip(el) {
+  var txt = typeof el === 'string' ? el : el.textContent;
+  sendMsg(txt);
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.classList.add('copied'); btn.querySelector('span').textContent = 'Copied!';
+    setTimeout(function() { btn.classList.remove('copied'); btn.querySelector('span').textContent = 'Copy'; }, 2000);
+  }).catch(function() { btn.querySelector('span').textContent = 'Failed'; });
+}
+
+var fbType = '', fbMsgText = '', fbLikeBtn = null, fbDislikeBtn = null;
+function openFbModal(type, msgText, lb, db) {
+  fbType = type; fbMsgText = msgText; fbLikeBtn = lb; fbDislikeBtn = db;
+  var isLike = type === 'thumbs_up';
+  document.getElementById('fb-emoji').textContent = isLike ? '👍' : '👎';
+  document.getElementById('fb-title').textContent = isLike ? 'What did you like?' : 'What can be improved?';
+  document.getElementById('fb-text').value = '';
+  document.getElementById('fb-submit-btn').disabled = false;
+  document.getElementById('fb-submit-btn').textContent = 'Send Feedback';
+  document.getElementById('fbmodal').classList.add('show');
+  setTimeout(function() { document.getElementById('fb-text').focus(); }, 100);
+}
+function closeFbModal() { document.getElementById('fbmodal').classList.remove('show'); }
+
+var EMAILJS_READY = false;
+window.addEventListener('load', function() {
+  if (typeof emailjs !== 'undefined') { emailjs.init({publicKey:'YOUR_EMAILJS_PUBLIC_KEY'}); EMAILJS_READY = true; }
+});
+async function submitFeedback() {
+  var comment = document.getElementById('fb-text').value.trim();
+  var sb2 = document.getElementById('fb-submit-btn');
+  sb2.disabled = true; sb2.textContent = 'Sending...';
+  var emoji = fbType === 'thumbs_up' ? '👍' : '👎';
+  try {
+    if (EMAILJS_READY) {
+      await emailjs.send('YOUR_SERVICE_ID','YOUR_TEMPLATE_ID',{feedback_type:emoji+' '+fbType.replace('_',' ').toUpperCase(),user_comment:comment||'(no comment)',bot_message:fbMsgText,session_id:SID,sent_time:new Date().toLocaleString()});
+    } else {
+      await fetch(API+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:fbType,message:fbMsgText,comment:comment,sessionId:SID,time:new Date().toISOString()})});
+    }
+  } catch(e) { console.log('Feedback error:', e); }
+  if (fbType==='thumbs_up'&&fbLikeBtn){fbLikeBtn.classList.add('liked');if(fbDislikeBtn)fbDislikeBtn.classList.remove('disliked');}
+  else if(fbDislikeBtn){fbDislikeBtn.classList.add('disliked');if(fbLikeBtn)fbLikeBtn.classList.remove('liked');}
+  sb2.textContent = 'Sent! ✓';
+  setTimeout(function(){closeFbModal();}, 700);
+}
+
+function addFeedback(col, msgText) {
+  var fb = document.createElement('div'); fb.className = 'feedback';
+  var cb = document.createElement('button'); cb.className = 'fbtn';
+  cb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+  cb.onclick = function() { copyText(cb, msgText); };
+  var lb = document.createElement('button'); lb.className = 'fbtn';
+  lb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg><span></span>';
+  lb.onclick = function() { if (!lb.classList.contains('liked')) openFbModal('thumbs_up', msgText, lb, db); };
+  var db = document.createElement('button'); db.className = 'fbtn';
+  db.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg><span></span>';
+  db.onclick = function() { if (!db.classList.contains('disliked')) openFbModal('thumbs_down', msgText, lb, db); };
+  fb.appendChild(cb); fb.appendChild(lb); fb.appendChild(db);
+  col.appendChild(fb);
+}
+
+function addMsg(text, role, htmlStr, domEl, extraClass) {
+  hideWelcome();
+  var row = document.createElement('div'); row.className = 'row ' + role;
+  if (role === 'bot') {
+    var av = document.createElement('div'); av.className = 'bavatar';
+    av.innerHTML = '<img src="' + getLogo() + '" alt="V"/>'; row.appendChild(av);
+  }
+  var col = document.createElement('div'); col.className = 'bcol';
+  var bub = document.createElement('div'); bub.className = 'bubble' + (extraClass ? ' ' + extraClass : '');
+  if (domEl) bub.appendChild(domEl);
+  else if (htmlStr) bub.innerHTML = htmlStr;
+  else bub.textContent = text;
+  var t = document.createElement('div'); t.className = 'btime'; t.textContent = getTime();
+  col.appendChild(bub); col.appendChild(t);
+  if (role === 'bot' && text) addFeedback(col, text);
+  row.appendChild(col);
+  msgs.appendChild(row);
+  document.getElementById('msgsOuter').scrollTop = 99999;
+}
+
+function showTyping() {
+  hideWelcome();
+  var row = document.createElement('div'); row.className = 'row bot'; row.id = 'typing';
+  var av = document.createElement('div'); av.className = 'bavatar';
+  av.innerHTML = '<img src="' + getLogo() + '" alt="V"/>'; row.appendChild(av);
+  var b = document.createElement('div'); b.className = 'typing';
+  b.innerHTML = '<div class="td"></div><div class="td"></div><div class="td"></div>';
+  row.appendChild(b); msgs.appendChild(row);
+  document.getElementById('msgsOuter').scrollTop = 99999;
+}
+function hideTyping() { var t = document.getElementById('typing'); if (t) t.remove(); }
+
+async function sendMsg(text) {
+  var msg = text || inp.value.trim();
+  if (!msg || busy) return;
+  sbtn.classList.add('sending');
+  setTimeout(function(){sbtn.classList.remove('sending');},420);
+  inp.value = ''; inp.style.height = 'auto'; sbtn.disabled = true; busy = true;
+  addMsg(msg, 'user');
+  addRecentChat(msg.length > 40 ? msg.slice(0, 40) + '…' : msg);
+  showTyping();
+  try {
+    var res = await fetch(API+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,sessionId:SID})});
+    var data = await res.json();
+    hideTyping(); addMsg(data.reply || data.error || 'Something went wrong!', 'bot');
+  } catch(e) { hideTyping(); addMsg('Server is waking up, wait 30 seconds and try again!', 'bot'); }
+  busy = false; sbtn.disabled = !inp.value.trim(); inp.focus();
+}
+
+var pendingFile = null;
+function handleImgSelect(e) {
+  var file = e.target.files[0]; if (!file) return; e.target.value = '';
+  pendingFile = file;
+  var url = URL.createObjectURL(file);
+  document.getElementById('previmg').src = url;
+  document.getElementById('prevcaption').value = '';
+  document.getElementById('imgpreview').classList.add('show');
+}
+function cancelPreview() { document.getElementById('imgpreview').classList.remove('show'); pendingFile = null; }
+async function confirmSendImage() {
+  if (!pendingFile) return;
+  var file = pendingFile, caption = document.getElementById('prevcaption').value.trim();
+  var previewUrl = document.getElementById('previmg').src;
+  document.getElementById('imgpreview').classList.remove('show'); pendingFile = null;
+  var wrap = document.createElement('div');
+  var imgEl = document.createElement('img'); imgEl.src = previewUrl; imgEl.alt = 'image';
+  wrap.appendChild(imgEl);
+  if (caption) { var capEl = document.createElement('div'); capEl.className = 'img-caption'; capEl.textContent = caption; wrap.appendChild(capEl); }
+  addMsg('', 'user', '', wrap, 'img-bubble');
+  showTyping(); busy = true; sbtn.disabled = true;
+  var reader = new FileReader();
+  reader.onload = async function(ev) {
+    var b64 = ev.target.result.split(',')[1];
+    try {
+      var res = await fetch(API+'/vision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,mimeType:file.type,caption:caption,sessionId:SID})});
+      var data = await res.json();
+      hideTyping(); addMsg(data.reply || 'Could not analyze image.', 'bot');
+    } catch(e) { hideTyping(); addMsg('Could not reach server. Try again!', 'bot'); }
+    busy = false; sbtn.disabled = !inp.value.trim();
+  };
+  reader.readAsDataURL(file);
+}
+
+function buildWave() {
+  var wave = document.getElementById('recwave'); wave.innerHTML = '';
+  var h = [6,10,16,22,28,22,16,10,6,12,20,26,20,12,6,14,24,30,24,14,6,10,18,24,18,10,6,8,14,20];
+  for (var i=0;i<30;i++){var d=document.createElement('div');d.className='rwb';d.style.setProperty('--h',h[i]+'px');wave.appendChild(d);}
+}
+async function startRec() {
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    recChunks = []; recorder = new MediaRecorder(recStream);
+    recorder.ondataavailable = function(e){if(e.data.size>0)recChunks.push(e.data);};
+    recorder.start(100); recSecs = 0;
+    document.getElementById('rectime').textContent = '0:00';
+    document.getElementById('recrow').classList.add('show');
+    document.querySelector('.irow').style.display = 'none';
+    buildWave();
+    recInterval = setInterval(function(){
+      recSecs++;var m=Math.floor(recSecs/60),s=recSecs%60;
+      document.getElementById('rectime').textContent=m+':'+(s<10?'0':'')+s;
+    },1000);
+  } catch(e) { addMsg('Microphone access denied. Please allow microphone access.', 'bot'); }
+}
+function cancelRec() {
+  if (recorder&&recorder.state!=='inactive') recorder.stop();
+  if (recStream) recStream.getTracks().forEach(function(t){t.stop();});
+  clearInterval(recInterval);
+  document.getElementById('recrow').classList.remove('show');
+  document.querySelector('.irow').style.display = 'flex';
+  recChunks=[]; recorder=null; recStream=null;
+}
+function stopAndSendRec() {
+  clearInterval(recInterval);
+  document.getElementById('recrow').classList.remove('show');
+  document.querySelector('.irow').style.display = 'flex';
+  if (recStream) recStream.getTracks().forEach(function(t){t.stop();});
+  if (recorder&&recorder.state!=='inactive'){recorder.onstop=function(){processVoice();};recorder.stop();}
+  else processVoice();
+}
+async function processVoice() {
+  if (!recChunks.length) return;
+  var blob = new Blob(recChunks,{type:'audio/webm'}); recChunks=[]; recorder=null; recStream=null;
+  var audioUrl = URL.createObjectURL(blob);
+  var vw = document.createElement('div'); vw.className = 'voice-bubble';
+  var ae = document.createElement('audio'); ae.src = audioUrl; ae.preload = 'auto';
+  var pb = document.createElement('button'); pb.className = 'vplay'; pb.textContent = '▶';
+  pb.onclick = function(){if(ae.paused){ae.play();pb.textContent='⏸';}else{ae.pause();pb.textContent='▶';}};
+  ae.onended = function(){pb.textContent='▶';};
+  var wd = document.createElement('div'); wd.className = 'vwave';
+  var wh=[6,10,18,28,36,28,18,10,6,14,24,34,24,14,6,20,32,40,32,20,6,12,22,30,22,12,6,8,16,24];
+  for(var i=0;i<30;i++){var bar=document.createElement('div');bar.className='vbar';bar.style.height=wh[i]+'px';wd.appendChild(bar);}
+  vw.appendChild(pb); vw.appendChild(wd); vw.appendChild(ae);
+  addMsg('','user','',vw);
+  showTyping(); busy=true; sbtn.disabled=true;
+  var reader = new FileReader();
+  reader.onload = async function(ev){
+    var b64=ev.target.result.split(',')[1];
+    try{
+      var res=await fetch(API+'/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,mimeType:'audio/webm',sessionId:SID})});
+      var data=await res.json();
+      hideTyping(); addMsg(data.reply||'Could not process voice.','bot');
+    }catch(e){hideTyping();addMsg('Could not reach server. Try again!','bot');}
+    busy=false; sbtn.disabled=!inp.value.trim();
+  };
+  reader.readAsDataURL(blob);
+}
+
+function clearChat() {
+  fetch(API+'/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:SID})}).catch(function(){});
+
+  msgs.innerHTML = '';
+
+  var w = document.createElement('div');
+  w.id = 'welcome'; w.className = 'welcome';
+  w.style.cssText = 'display:flex;opacity:1;';
+
+  var sugs = document.createElement('div');
+  sugs.id = 'sugCards'; sugs.className = 'suggestions';
+
+  var items = [
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+     title:'Search the web', sub:'Get real-time info', action:'sendMsg("Search the web for latest news")'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+     title:'Analyze image', sub:'Visualize anything', action:'document.getElementById("imginput").click()'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 6a6 6 0 1 0 6 6"/><path d="M18 12h4"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
+     title:'Brainstorm ideas', sub:'Spark creativity', action:'sendMsg("Help me brainstorm ideas")'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+     title:'Write something', sub:'Essays, posts & more', action:'sendMsg("Help me write something")'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+     title:'Voice message', sub:'Speak to Vektra', action:'startRec()'}
+  ];
+
+  items.forEach(function(it, i){
+    var btn = document.createElement('button');
+    btn.className = 'sug-item anim';
+    btn.style.animationDelay = (0.05 + i * 0.07) + 's';
+    btn.innerHTML = '<div class="sug-icon">' + it.svg + '</div>' +
+      '<div class="sug-texts"><span class="sug-title">' + it.title + '</span>' +
+      '<span class="sug-sub">' + it.sub + '</span></div>';
+    btn.onclick = new Function(it.action + ';');
+    sugs.appendChild(btn);
+  });
+
+  w.appendChild(sugs);
+  msgs.appendChild(w);
+  document.getElementById('msgsOuter').scrollTop = 0;
+}
+</script>
+</body>
+  </html>
