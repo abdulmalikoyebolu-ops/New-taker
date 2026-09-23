@@ -19,7 +19,7 @@ const TAVILY_API_KEY   = process.env.TAVILY_API_KEY;
 const GOOGLE_API_KEY   = process.env.GOOGLE_API_KEY;
 const GOOGLE_CSE_ID    = process.env.GOOGLE_CSE_ID;
 const AUTH_FOLDER      = './auth_info';
-const MAX_HISTORY      = 20;
+const MAX_HISTORY      = 60;
 const PORT             = process.env.PORT || 3000;
 
 const CHAT_MODEL      = 'openai/gpt-oss-20b';
@@ -29,7 +29,7 @@ const VISION_FALLBACK = 'qwen/qwen3.8-27b'; // retry (without reasoning_effort) 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You love emojis: add fitting emojis often so your replies feel lively, warm and fun, usually two or three per reply, placed naturally. Match the format to the message. For greetings, small talk, opinions and simple questions, reply the way a friend would text: one to three short natural sentences with a couple of fitting emojis, and never a list. Never give several alternative replies or several versions of the same answer, give exactly one answer. Only when the user asks for information that truly has several separate parts (steps, a comparison, a set of items, an explanation with distinct points) use this structure: one short intro line, a blank line, then a plain numbered list (1. 2. 3.) with each item on its own new line as a fitting emoji, a short title, a dash, and a one or two sentence explanation, for example: 1. 🔥 Title – explanation (use dot bullets • when the order does not matter, and always write the numbers as plain digits, never emoji numbers), then a blank line and a short friendly wrap-up line with an emoji. Never use asterisks, hashtags or markdown symbols. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
 
-Accuracy rule: you do not have live information and your training data has a cutoff, so specific facts like release dates, version numbers, prices, current events, or anything that changes over time may be outdated or simply wrong in your memory. If a question depends on a fact like that and you are not fully certain, say so plainly instead of stating a guess as if it were confirmed — for example say something like "I'm not fully sure on that, it might have changed" rather than inventing a specific date or number. Being honestly uncertain is always better than sounding confident and being wrong.`;
+Accuracy rule: you do not have live information and your training data has a cutoff, so specific facts like release dates, version numbers, prices, current events, or anything that changes over time may be outdated or simply wrong in your memory. If a question depends on a fact like that and you are not fully certain, say so plainly instead of stating a guess as if it were confirmed — for example say something like "I'm not fully sure on that, it might have changed" rather than inventing a specific date or number. Being honestly uncertain is always better than sounding confident and being wrong. This also applies to the user: never guess or invent their name or any personal detail about them, and never answer a question about them with a joke, a song lyric or a made-up name. If you do not know it, say so warmly and ask, for example: I don't think you've told me your name yet, what should I call you? 😊`;
 
 const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. If the search results do not actually answer the question, say so honestly instead of guessing. Be conversational and natural, like you are talking to a friend. Answer simple questions in one or two short sentences, and use fitting emojis often. Only when the answer has several distinct items use one short intro line, then a plain numbered list (1. 2. 3.) or dot bullets (•) with each item on its own new line starting with a fitting emoji after the number, then a short friendly wrap-up with an emoji. Give exactly one answer, never several alternatives. No asterisks, hashtags or markdown symbols. The current year is 2026.`;
 
@@ -53,6 +53,32 @@ let isConnected    = false;
 let sock           = null;
 let conversations  = {};
 let webSessions    = {};
+
+// ─── Long-term memory: durable facts about each user (name, likes, etc.) ──────
+const MEMORY_FILE = process.env.MEMORY_FILE || './memories.json';
+let memories = {};
+try { memories = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8')); } catch (e) { memories = {}; }
+function saveMemories() {
+  try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(memories)); } catch (e) { /* disk may be read-only, ignore */ }
+}
+const PERSONAL = /\b(my name|call me|i am|i'm|im|i live|i stay|i come from|i work|i study|i like|i love|i hate|my favou?rite|my (birthday|age|job|school|city|country|brother|sister|friend|dad|mom|mum|girlfriend|boyfriend|wife|husband)|remember)\b/i;
+async function learnFacts(id, text) {
+  try {
+    if (!PERSONAL.test(text)) return;
+    const existing = memories[id] || '';
+    const out = await askGroq([
+      { role: 'system', content: "You keep short notes about a user. Given the existing notes and the user's new message, return the updated notes as short lines (max 12 lines, each one a durable fact such as name, location, job, school, likes, dislikes, family, goals). Only keep facts the user stated about themselves. If the new message adds nothing new, return the existing notes unchanged. If there are no notes at all, return NONE. Return only the notes, with no extra words." },
+      { role: 'user', content: `Existing notes:\n${existing || 'NONE'}\n\nNew message: ${text}` }
+    ]);
+    const cleaned = (out || '').trim();
+    if (cleaned && !/^NONE$/i.test(cleaned)) {
+      memories[id] = cleaned.slice(0, 1500);
+      saveMemories();
+    }
+  } catch (e) {
+    console.error('learnFacts failed:', e.message);
+  }
+}
 
 // ─── Fetch with timeout helper (reliability) ──────────────────────────────────
 async function fetchWithTimeout(url, options, ms) {
@@ -233,7 +259,10 @@ async function askGroqVision(base64Image, mimeType, caption) {
   throw new Error('All vision models failed');
 }
 
-async function getReply(sessionHistory, message, useSearch) {
+async function getReply(sessionHistory, message, useSearch, memory) {
+  const memNote = memory
+    ? ` Things you already know about this user from earlier chats: ${memory}. Use them naturally, and if they ask what their name is or what you remember about them, answer from these notes.`
+    : ` You do not know this user's name or any personal details yet, unless they told you earlier in this conversation. Never guess or make them up. If they ask about their name or about themselves, say honestly that you don't know yet and ask them.`;
   if (useSearch) {
     let query = message;
     if (message.trim().split(/\s+/).length < 6) {
@@ -243,17 +272,17 @@ async function getReply(sessionHistory, message, useSearch) {
     const searchResults = await webSearch(query);
     if (searchResults) {
       return await askGroq([
-        { role: 'system', content: `${SEARCH_SYSTEM_PROMPT} Use the earlier conversation for context. Here are the search results: ${searchResults}` },
+        { role: 'system', content: `${SEARCH_SYSTEM_PROMPT}${memNote} Use the earlier conversation for context. Here are the search results: ${searchResults}` },
         ...sessionHistory
       ]);
     }
     return await askGroq([
-      { role: 'system', content: `${SYSTEM_PROMPT} Note: web search is unavailable right now. If this question needs current/factual info you are not certain about, say so briefly instead of guessing.` },
+      { role: 'system', content: `${SYSTEM_PROMPT}${memNote} Note: web search is unavailable right now. If this question needs current/factual info you are not certain about, say so briefly instead of guessing.` },
       ...sessionHistory
     ]);
   }
   return await askGroq([
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: SYSTEM_PROMPT + memNote },
     ...sessionHistory
   ]);
 }
@@ -381,8 +410,9 @@ async function connectToWhatsApp() {
               await sock.sendMessage(jid, { text: 'I could not hear anything in that voice note 🎤' }, { quoted: message });
             } else {
               conversations[jid].push({ role: 'user', content: text });
+        learnFacts(jid, text);
               conversations[jid] = trimHistory(conversations[jid]);
-              const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]));
+              const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]), memories[jid]);
               conversations[jid].push({ role: 'assistant', content: reply.slice(0, 600) });
               await sock.sendMessage(jid, { text: reply }, { quoted: message });
             }
@@ -414,9 +444,10 @@ async function connectToWhatsApp() {
         }
 
         conversations[jid].push({ role: 'user', content: text });
+        learnFacts(jid, text);
         conversations[jid] = trimHistory(conversations[jid]);
 
-        const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]));
+        const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]), memories[jid]);
         conversations[jid].push({ role: 'assistant', content: reply.slice(0, 600) });
 
         await sock.sendMessage(jid, { text: reply }, { quoted: message });
@@ -513,6 +544,22 @@ const UI_FIX_JS = String.raw`
     }).join('');
   }
   window.vektraFmt=fmt;
+  var _f=window.fetch;
+  window.fetch=function(url,opts){
+    var isChat=typeof url==='string'&&/\/(chat|voice)$/.test(url);
+    if(isChat&&opts&&typeof opts.body==='string'){
+      try{
+        var b=JSON.parse(opts.body);
+        b.memory=localStorage.getItem('vektra_mem')||'';
+        opts=Object.assign({},opts,{body:JSON.stringify(b)});
+      }catch(e){}
+    }
+    var p=_f.call(this,url,opts);
+    if(isChat){p.then(function(r){r.clone().json().then(function(d){
+      if(d&&typeof d.memory==='string'&&d.memory)localStorage.setItem('vektra_mem',d.memory);
+    }).catch(function(){});}).catch(function(){});}
+    return p;
+  };
   var _a=addMsg;
   addMsg=function(text,role,htmlStr,domEl,extra){
     _a.apply(this,arguments);
@@ -537,22 +584,24 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { message, sessionId } = JSON.parse(body);
+        const { message, sessionId, memory: clientMemory } = JSON.parse(body);
         if (!message?.trim()) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: 'Message is required' }));
         }
         const sid = sessionId || 'default';
         if (!webSessions[sid]) webSessions[sid] = [];
+        if (clientMemory && !memories[sid]) memories[sid] = String(clientMemory).slice(0, 1500);
 
         webSessions[sid].push({ role: 'user', content: message });
+        learnFacts(sid, message);
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await getReply(webSessions[sid], message, await shouldSearch(message, webSessions[sid]));
+        const reply = await getReply(webSessions[sid], message, await shouldSearch(message, webSessions[sid]), memories[sid]);
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply }));
+        res.end(JSON.stringify({ reply, memory: memories[sid] || '' }));
       } catch (e) {
         console.error('Web chat error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -614,7 +663,7 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { audio, mimeType, sessionId } = JSON.parse(body);
+        const { audio, mimeType, sessionId, memory: clientMemory } = JSON.parse(body);
         if (!audio) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: 'Audio data required' }));
@@ -622,6 +671,7 @@ const server = http.createServer(async (req, res) => {
         const sid = sessionId || 'default';
         if (!webSessions[sid]) webSessions[sid] = [];
 
+        if (clientMemory && !memories[sid]) memories[sid] = String(clientMemory).slice(0, 1500);
         const audioBuffer = Buffer.from(audio, 'base64');
         const audioBlob   = new Blob([audioBuffer], { type: mimeType || 'audio/webm' });
         const formData    = new FormData();
@@ -644,14 +694,15 @@ const server = http.createServer(async (req, res) => {
         }
 
         webSessions[sid].push({ role: 'user', content: text });
+        learnFacts(sid, text);
         webSessions[sid] = trimHistory(webSessions[sid]);
 
-        const reply = await getReply(webSessions[sid], text, await shouldSearch(text, webSessions[sid]));
+        const reply = await getReply(webSessions[sid], text, await shouldSearch(text, webSessions[sid]), memories[sid]);
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply, transcribed: text }));
+        res.end(JSON.stringify({ reply, transcribed: text, memory: memories[sid] || '' }));
       } catch (e) {
         console.error('Voice endpoint error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
