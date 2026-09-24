@@ -152,17 +152,17 @@
     }
     .bot-content p { margin-bottom: 12px; }
     .bot-content p:last-child { margin-bottom: 0; }
-    .bot-point {
-      display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; margin: 8px 0;
-      border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-    }
-    .bot-point-num { font-size: 17px; shrink: 0; line-height: 1.4; user-select: none; }
-    .bot-point-body { flex: 1; line-height: 1.65; }
-    .bot-bullet {
-      display: flex; align-items: flex-start; gap: 10px; margin: 6px 0; padding-left: 4px;
+    
+    /* Clean Bullets in Single Unified Bubble with Comfortable Spacing */
+    .bot-bullet-row {
+      display: flex; align-items: flex-start; gap: 12px; padding: 3px 0; margin: 4px 0;
     }
     .bot-bullet-dot {
       width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; margin-top: 9px; shrink: 0;
+      box-shadow: 0 0 6px rgba(56,189,248,0.6);
+    }
+    .bot-bullet-body {
+      flex: 1; font-size: 15.5px; line-height: 1.7; color: var(--text);
     }
 
     /* Thinking / searching status row */
@@ -180,7 +180,7 @@
     }
     @keyframes pulseOpacity { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
 
-    /* Action buttons below messages (Copy, Share, Thumbs, Pin) */
+    /* Action buttons below messages (Copy, Share, Thumbs) */
     .msg-actions {
       display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #737373;
     }
@@ -324,11 +324,30 @@
     .v-bar:nth-child(3) { height: 8px; animation-delay: 0.36s; }
     @keyframes bounceBar { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1.1); } }
     .send-arrow-btn {
-      width: 36px; height: 36px; border-radius: 50%; background: var(--text); border: none;
-      color: var(--bg); display: none; align-items: center; justify-content: center;
-      cursor: pointer; transition: transform .15s; shrink: 0; font-weight: 700;
+      width: 36px; height: 36px; border-radius: 50%; background: #2563eb; border: none;
+      color: #ffffff; display: none; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; shrink: 0; font-weight: 700;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
     }
-    .send-arrow-btn:active { transform: scale(0.9); }
+    .send-arrow-btn:hover { background: #1d4ed8; }
+    .send-arrow-btn:active { transform: scale(0.92); }
+    .stop-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: #262626; border: 1px solid #454545;
+      color: #ffffff; display: none; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; shrink: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .stop-btn:hover { background: #333333; border-color: #666666; }
+    .stop-btn:active { transform: scale(0.92); }
+    .stop-square { width: 12px; height: 12px; background: #ffffff; border-radius: 2px; }
+    .mic-btn.recording {
+      color: #ef4444 !important; background: rgba(239, 68, 68, 0.15) !important;
+      border: 1px solid rgba(239, 68, 68, 0.4); animation: micPulse 1.2s infinite;
+    }
+    @keyframes micPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+    }
 
     /* ─── LIVE VOICE MODE OVERLAY ─── */
     .voice-overlay {
@@ -346,6 +365,39 @@
   </style>
 </head>
 <body>
+
+<!-- Master Global Permanent SVG Gradients (Ensures Vektra neon logo NEVER turns black & white across conversations) -->
+<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;" aria-hidden="true">
+  <defs>
+    <linearGradient id="vektraPermCyan" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#38e1ff"/>
+      <stop offset="60%" stop-color="#00b4d8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="vektraPermPink" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="60%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#f43f5e"/>
+    </linearGradient>
+    <linearGradient id="vektraPermHoriz" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="35%" stop-color="#38bdf8"/>
+      <stop offset="65%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="vektraPermVert" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#38e1ff"/>
+      <stop offset="30%" stop-color="#2563eb"/>
+      <stop offset="70%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="vektraPermDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+</svg>
 
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeSidebar()"></div>
 
@@ -511,16 +563,19 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
           <textarea id="chatInput" rows="1" placeholder="Ask Vektra" onfocus="handleFocus()" onblur="handleBlur()" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
-          <button class="mic-btn" id="micBtn" onclick="alert('Voice dictation active')" title="Voice Dictation">
+          <button class="mic-btn" id="micBtn" onclick="toggleVoiceRecording()" title="Record voice while typing">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button class="stop-btn" id="stopBtn" onclick="cancelGeneration()" title="Stop generating (Cancel)">
+            <div class="stop-square"></div>
+          </button>
+          <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()" title="Send message">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
           </button>
           <button class="blue-voice-btn" id="voiceBtn" onclick="openVoiceMode()" title="Live Voice Mode">
             <div class="voice-bars">
               <span class="v-bar"></span><span class="v-bar"></span><span class="v-bar"></span>
             </div>
-          </button>
-          <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
           </button>
         </div>
       </div>
@@ -543,68 +598,40 @@
 <script>
   const API_ENDPOINT = 'https://vektrastudio-bot.onrender.com';
   const VEKTRA_SVG_MARK = `<svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="rlTopCyan" x1="0%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stop-color="#38e1ff"/>
-        <stop offset="60%" stop-color="#00b4d8"/>
-        <stop offset="100%" stop-color="#2563eb"/>
-      </linearGradient>
-      <linearGradient id="rlBottomPink" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stop-color="#6366f1"/>
-        <stop offset="60%" stop-color="#a855f7"/>
-        <stop offset="100%" stop-color="#f43f5e"/>
-      </linearGradient>
-      <linearGradient id="rlHorizRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
-        <stop offset="0%" stop-color="#00f2fe"/>
-        <stop offset="35%" stop-color="#38bdf8"/>
-        <stop offset="65%" stop-color="#6366f1"/>
-        <stop offset="100%" stop-color="#c084fc"/>
-      </linearGradient>
-      <linearGradient id="rlVertRibbon" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stop-color="#38e1ff"/>
-        <stop offset="30%" stop-color="#2563eb"/>
-        <stop offset="70%" stop-color="#8b5cf6"/>
-        <stop offset="100%" stop-color="#ec4899"/>
-      </linearGradient>
-      <linearGradient id="rlDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#60a5fa"/>
-        <stop offset="50%" stop-color="#2563eb"/>
-        <stop offset="100%" stop-color="#4338ca"/>
-      </linearGradient>
-    </defs>
     <path d="M 28 250 C 100 135, 400 135, 472 250 C 400 365, 100 365, 28 250 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
     <path d="M 250 28 C 135 100, 135 400, 250 472 C 365 400, 365 100, 250 28 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
-    <path d="M 34 250 C 104 140, 396 140, 466 250 C 396 360, 104 360, 34 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
-    <path d="M 250 34 C 140 104, 140 396, 250 466 C 360 396, 360 104, 250 34 Z" stroke="url(#sbVertRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+    <path d="M 34 250 C 104 140, 396 140, 466 250 C 396 360, 104 360, 34 250 Z" stroke="url(#vektraPermHoriz)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+    <path d="M 250 34 C 140 104, 140 396, 250 466 C 360 396, 360 104, 250 34 Z" stroke="url(#vektraPermVert)" stroke-width="24" stroke-linejoin="round" fill="none"/>
     <path d="M 64 250 C 124 165, 376 165, 436 250 C 376 335, 124 335, 64 250 Z" stroke="#000000" stroke-width="12" fill="none"/>
     <path d="M 250 64 C 165 124, 165 376, 250 436 C 335 376, 335 124, 250 64 Z" stroke="#000000" stroke-width="12" fill="none"/>
-    <path d="M 80 250 C 136 182, 364 182, 420 250 C 364 318, 136 318, 80 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
-    <path d="M 250 80 C 182 136, 182 364, 250 420 C 318 364, 318 136, 250 80 Z" stroke="url(#sbVertRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
+    <path d="M 80 250 C 136 182, 364 182, 420 250 C 364 318, 136 318, 80 250 Z" stroke="url(#vektraPermHoriz)" stroke-width="6" opacity="0.95" fill="none"/>
+    <path d="M 250 80 C 182 136, 182 364, 250 420 C 318 364, 318 136, 250 80 Z" stroke="url(#vektraPermVert)" stroke-width="6" opacity="0.95" fill="none"/>
     <rect x="200" y="200" width="100" height="100" rx="10" stroke="#000000" stroke-width="16" fill="none"/>
-    <rect x="202" y="202" width="96" height="96" rx="8" stroke="url(#sbHorizRibbon)" stroke-width="8" fill="none"/>
+    <rect x="202" y="202" width="96" height="96" rx="8" stroke="url(#vektraPermHoriz)" stroke-width="8" fill="none"/>
     <g transform="translate(250, 250) rotate(45)">
       <rect x="-44" y="-44" width="88" height="88" rx="12" fill="#000000" stroke="#000000" stroke-width="6"/>
-      <rect x="-40" y="-40" width="80" height="80" rx="10" fill="url(#sbDiamond)" stroke="#38bdf8" stroke-width="3"/>
+      <rect x="-40" y="-40" width="80" height="80" rx="10" fill="url(#vektraPermDiamond)" stroke="#38bdf8" stroke-width="3"/>
       <polygon points="-40,-40 40,-40 0,0" fill="#60a5fa" opacity="0.5"/>
       <polygon points="40,-40 40,40 0,0" fill="#3b82f6" opacity="0.3"/>
       <circle cx="0" cy="0" r="10" fill="#ffffff"/>
     </g>
     <circle cx="250" cy="40" r="15" fill="#000000"/>
-    <circle cx="250" cy="40" r="10" fill="url(#rlTopCyan)"/>
+    <circle cx="250" cy="40" r="10" fill="url(#vektraPermCyan)"/>
     <circle cx="250" cy="40" r="4.5" fill="#ffffff"/>
     <circle cx="250" cy="460" r="15" fill="#000000"/>
-    <circle cx="250" cy="460" r="10" fill="url(#rlBottomPink)"/>
+    <circle cx="250" cy="460" r="10" fill="url(#vektraPermPink)"/>
     <circle cx="250" cy="460" r="4.5" fill="#ffffff"/>
     <circle cx="40" cy="250" r="15" fill="#000000"/>
-    <circle cx="40" cy="250" r="10" fill="url(#rlTopCyan)"/>
+    <circle cx="40" cy="250" r="10" fill="url(#vektraPermCyan)"/>
     <circle cx="40" cy="250" r="4.5" fill="#ffffff"/>
     <circle cx="460" cy="250" r="15" fill="#000000"/>
-    <circle cx="460" cy="250" r="10" fill="url(#rlBottomPink)"/>
+    <circle cx="460" cy="250" r="10" fill="url(#vektraPermPink)"/>
     <circle cx="460" cy="250" r="4.5" fill="#ffffff"/>
   </svg>`;
   const chatInput = document.getElementById('chatInput');
   const dockInner = document.getElementById('dockInner');
   const sendBtn = document.getElementById('sendBtn');
+  const stopBtn = document.getElementById('stopBtn');
   const micBtn = document.getElementById('micBtn');
   const voiceBtn = document.getElementById('voiceBtn');
   const messagesList = document.getElementById('messagesList');
@@ -612,6 +639,116 @@
   const sbHistoryList = document.getElementById('sbHistoryList');
   let isGenerating = false;
   let dynamicHistory = [];
+
+  let currentAbortController = null;
+  let currentAnimId = null;
+  let currentBotMsgId = null;
+
+  function updateDockButtons() {
+    const hasText = chatInput.value.trim().length > 0;
+    // Mic is ALWAYS visible so user can record while typing!
+    micBtn.style.display = 'flex';
+    if (isGenerating) {
+      sendBtn.style.display = 'none';
+      stopBtn.style.display = 'flex';
+      voiceBtn.style.display = 'none';
+    } else if (hasText) {
+      sendBtn.style.display = 'flex';
+      stopBtn.style.display = 'none';
+      voiceBtn.style.display = 'none';
+    } else {
+      sendBtn.style.display = 'none';
+      stopBtn.style.display = 'none';
+      voiceBtn.style.display = 'flex';
+    }
+  }
+
+  // Voice recording while typing
+  let isVoiceRecording = false;
+  let recognitionInstance = null;
+
+  function toggleVoiceRecording() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert('Voice dictation is not supported on this browser.');
+      return;
+    }
+    if (isVoiceRecording) {
+      if (recognitionInstance) recognitionInstance.stop();
+      isVoiceRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.title = 'Record voice while typing';
+      return;
+    }
+
+    try {
+      recognitionInstance = new SpeechRec();
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+
+      recognitionInstance.onstart = () => {
+        isVoiceRecording = true;
+        micBtn.classList.add('recording');
+        micBtn.title = 'Recording voice... click to stop';
+      };
+
+      recognitionInstance.onresult = (e) => {
+        let finalTrans = '';
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) finalTrans += e.results[i][0].transcript;
+        }
+        if (finalTrans) {
+          const spacer = chatInput.value && !chatInput.value.endsWith(' ') ? ' ' : '';
+          chatInput.value = chatInput.value + spacer + finalTrans.trim();
+          autoGrow(chatInput);
+          updateDockButtons();
+        }
+      };
+
+      recognitionInstance.onerror = () => {
+        isVoiceRecording = false;
+        micBtn.classList.remove('recording');
+        micBtn.title = 'Record voice while typing';
+      };
+
+      recognitionInstance.onend = () => {
+        isVoiceRecording = false;
+        micBtn.classList.remove('recording');
+        micBtn.title = 'Record voice while typing';
+      };
+
+      recognitionInstance.start();
+    } catch {
+      isVoiceRecording = false;
+      micBtn.classList.remove('recording');
+    }
+  }
+
+  // Cancel generation
+  function cancelGeneration() {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+    if (currentAnimId) {
+      cancelAnimationFrame(currentAnimId);
+      currentAnimId = null;
+    }
+    isGenerating = false;
+    updateDockButtons();
+
+    if (currentBotMsgId) {
+      const thinkingRow = document.getElementById(`thinking_${currentBotMsgId}`);
+      if (thinkingRow) thinkingRow.style.display = 'none';
+      const container = document.getElementById(`content_${currentBotMsgId}`);
+      if (container && !container.innerHTML.trim()) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-style:italic;">Response cancelled.</p>';
+      }
+      const actionsRow = document.getElementById(`actions_${currentBotMsgId}`);
+      if (actionsRow) actionsRow.style.display = 'flex';
+    }
+  }
 
   function handleFocus() {
     dockInner.classList.add('expanded');
@@ -624,10 +761,7 @@
   }
 
   chatInput.addEventListener('input', () => {
-    const hasText = chatInput.value.trim().length > 0;
-    sendBtn.style.display = hasText ? 'flex' : 'none';
-    micBtn.style.display = hasText ? 'none' : 'flex';
-    voiceBtn.style.display = hasText ? 'none' : 'flex';
+    updateDockButtons();
   });
 
   function autoGrow(el) {
@@ -842,11 +976,13 @@
       .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12.5px;color:#38bdf8;">$1</code>');
   }
 
+  const KEYCAPS = { 1: '1️⃣', 2: '2️⃣', 3: '3️⃣', 4: '4️⃣', 5: '5️⃣', 6: '6️⃣', 7: '7️⃣', 8: '8️⃣', 9: '9️⃣', 10: '🔟' };
+
   function renderMD(text) {
     if (!text) return '';
     // Auto-break emoji numbered items (1️⃣, 2️⃣, 3️⃣) or numbered points so they never mash together
     let t = text.replace(/([^\n])\s*([0-9]️⃣|🔟)/g, '$1\n\n$2');
-    t = t.replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n\n$2');
+    t = t.replace(/([^\n])\s+(\d+[\.\)\-]\s+)/g, '$1\n\n$2');
 
     const paragraphs = t.split(/\n\n+/);
     return paragraphs.map(p => {
@@ -860,21 +996,21 @@
         if (l.startsWith('## ')) return `<h3 style="font-size:17px;font-weight:700;margin:14px 0 6px;">${formatInlineText(l.slice(3))}</h3>`;
         if (l.startsWith('# ')) return `<h2 style="font-size:19px;font-weight:800;margin:16px 0 8px;">${formatInlineText(l.slice(2))}</h2>`;
 
-        // Emoji numbered items (e.g. 1️⃣ Target the space...)
+        // Emoji numbered items (1️⃣, 2️⃣, etc.) -> Clean bullet in single bubble
         const emojiMatch = l.match(/^([0-9]️⃣|🔟)\s*(.*)/);
         if (emojiMatch) {
-          return `<div class="bot-point"><span class="bot-point-num">${emojiMatch[1]}</span><div class="bot-point-body">${formatInlineText(emojiMatch[2])}</div></div>`;
+          return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(emojiMatch[2])}</div></div>`;
         }
 
-        // Standard numbered list
-        const numMatch = l.match(/^(\d+)\.\s+(.*)/);
+        // Standard numbered list (1. 2. 1) 2)) -> Clean bullet in single bubble
+        const numMatch = l.match(/^(\d+)[\.\)\-]\s+(.*)/);
         if (numMatch) {
-          return `<div class="bot-bullet"><span style="font-family:monospace;font-size:12px;color:#38bdf8;font-weight:700;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;height:fit-content;margin-top:2px;">${numMatch[1]}</span><div style="flex:1;line-height:1.65;">${formatInlineText(numMatch[2])}</div></div>`;
+          return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(numMatch[2])}</div></div>`;
         }
 
-        // Bullet point
+        // Bullet point -> Clean bullet in single bubble
         if (l.startsWith('- ') || l.startsWith('* ')) {
-          return `<div class="bot-bullet"><span class="bot-bullet-dot"></span><div style="flex:1;line-height:1.65;">${formatInlineText(l.slice(2))}</div></div>`;
+          return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(l.slice(2))}</div></div>`;
         }
 
         return `<p style="margin-bottom:8px;line-height:1.7;">${formatInlineText(line)}</p>`;
@@ -938,6 +1074,10 @@
     messagesList.appendChild(botRow);
     chatScroller.scrollTop = chatScroller.scrollHeight;
     isGenerating = true;
+    currentBotMsgId = botMsgId;
+    updateDockButtons();
+
+    currentAbortController = new AbortController();
 
     // Cycle thinking status
     const statusEl = document.getElementById(`status_${botMsgId}`);
@@ -948,16 +1088,24 @@
       const res = await fetch(API_ENDPOINT + '/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ message: text }),
+        signal: currentAbortController.signal
       });
       const data = await res.json();
       clearTimeout(t1);
       clearTimeout(t2);
-      typewrite(data.reply || 'Response complete.', botMsgId);
-    } catch (_) {
+      if (isGenerating) {
+        typewrite(data.reply || 'Response complete.', botMsgId);
+      }
+    } catch (err) {
       clearTimeout(t1);
       clearTimeout(t2);
-      typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.\n3️⃣ **Clean Stream** – Blinking bar cursor removed.`, botMsgId);
+      if (err.name === 'AbortError') {
+        return;
+      }
+      if (isGenerating) {
+        typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.\n3️⃣ **Clean Stream** – Blinking bar cursor removed.`, botMsgId);
+      }
     }
   }
 
@@ -982,7 +1130,6 @@
     let i = 0;
     let lastTime = performance.now();
     let pauseUntil = 0;
-    let animId;
 
     if (container) container.classList.add('typing-stream-active');
 
@@ -990,7 +1137,7 @@
 
     function step(now) {
       if (now < pauseUntil) {
-        animId = requestAnimationFrame(step);
+        currentAnimId = requestAnimationFrame(step);
         return;
       }
 
@@ -1021,12 +1168,14 @@
         }
 
         if (i >= fullText.length) {
+          currentAnimId = null;
           if (thinkingRow) thinkingRow.style.display = 'none';
           if (container) {
             container.classList.remove('typing-stream-active');
             container.innerHTML = renderMD(fullText);
           }
           isGenerating = false;
+          updateDockButtons();
 
           // Render Action Buttons below bot response
           if (actionsRow) {
@@ -1063,10 +1212,10 @@
         chatScroller.scrollTop = chatScroller.scrollHeight;
       }
 
-      animId = requestAnimationFrame(step);
+      currentAnimId = requestAnimationFrame(step);
     }
 
-    animId = requestAnimationFrame(step);
+    currentAnimId = requestAnimationFrame(step);
   }
 
   function handleFileSelected(e) {
