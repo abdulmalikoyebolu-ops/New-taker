@@ -1,308 +1,440 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Vektra AI — Next-Gen Intelligence Workspace</title>
+  <title>Vektra AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg: #09090b; --surface: #121217; --border: rgba(255,255,255,0.08);
-      --border-focus: rgba(147,51,234,0.5); --text: #f4f4f7; --text-muted: #8e8ea0;
-      --text-dim: #5c5c70; --accent: #7c3aed; --accent-glow: rgba(124,58,237,0.3);
-      --dock: rgba(18,18,23,0.9); --bot-bubble: #14141d;
-    }
-    body.light {
-      --bg: #f8f9fc; --surface: #ffffff; --border: rgba(0,0,0,0.08);
-      --border-focus: rgba(124,58,237,0.4); --text: #0f172a; --text-muted: #64748b;
-      --text-dim: #94a3b8; --dock: rgba(255,255,255,0.95); --bot-bubble: #ffffff;
-    }
     html, body {
-      height: 100%; height: 100dvh; font-family: 'Plus Jakarta Sans', sans-serif;
-      background: var(--bg); color: var(--text); overflow: hidden;
-      transition: background .25s ease, color .25s ease;
+      height: 100%; height: 100dvh; background: #000000; color: #ececec;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
-    .flare {
-      position: fixed; top: -20%; left: 50%; transform: translateX(-50%);
-      width: 700px; height: 500px; background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%);
-      pointer-events: none; z-index: 0;
+    .app { display: flex; width: 100vw; height: 100vh; height: 100dvh; position: relative; }
+
+    /* ─── SIDEBAR DRAWER ─── */
+    .drawer-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px); z-index: 90; transition: opacity .3s;
     }
-    .app { display: flex; width: 100vw; height: 100vh; height: 100dvh; position: relative; z-index: 1; }
-    .sb {
-      width: 260px; shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; z-index: 50; transition: transform .3s cubic-bezier(0.16,1,0.3,1);
+    .drawer-backdrop.active { display: block; }
+    .sidebar {
+      position: fixed; top: 0; bottom: 0; left: 0; width: 280px; max-width: 85vw;
+      background: #171717; border-right: 1px solid #262626; z-index: 100;
+      display: flex; flex-direction: column; transform: translateX(-100%);
+      transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
-    @media(max-width: 768px) {
-      .sb { position: fixed; inset: 0 auto 0 0; transform: translateX(-100%); }
-      .sb.open { transform: translateX(0); }
-      .sb-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 45; }
-      .sb-mask.active { display: block; }
+    .sidebar.open { transform: translateX(0); }
+    .sb-top { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #262626; }
+    .sb-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .sb-logo { width: 30px; height: 30px; border-radius: 8px; background: #212121; border: 1px solid #333; padding: 4px; display: flex; align-items: center; justify-content: center; }
+    .sb-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .sb-actions { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .new-chat-btn {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-radius: 12px; background: #212121; border: 1px solid #2e2e2e;
+      color: #fff; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .2s;
     }
-    .brand { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 12px; }
-    .brand-id { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
-    .logo-sq {
-      width: 30px; height: 30px; border-radius: 9px; background: rgba(124,58,237,0.2);
-      border: 1px solid rgba(124,58,237,0.3); display: flex; align-items: center; justify-content: center;
+    .new-chat-btn:hover { background: #2a2a2a; }
+    .search-box {
+      width: 100%; padding: 8px 12px; border-radius: 10px; background: #212121;
+      border: 1px solid transparent; color: #fff; font-size: 12.5px; outline: none;
     }
-    .logo-sq img { width: 18px; height: 18px; }
-    .new-btn {
-      margin: 4px 12px 10px; padding: 10px 14px; border-radius: 12px;
-      background: linear-gradient(135deg, #7c3aed, #6366f1); border: none; color: #fff;
-      font-weight: 600; font-size: 13.5px; cursor: pointer; display: flex; align-items: center;
-      justify-content: center; gap: 8px; box-shadow: 0 4px 14px var(--accent-glow); transition: all .2s;
+    .search-box:focus { border-color: #383838; }
+    .history-list { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .history-group-title { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #737373; text-transform: uppercase; padding: 8px 6px 4px; }
+    .history-item {
+      padding: 8px 10px; border-radius: 10px; font-size: 13px; color: #d4d4d4;
+      cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+      display: flex; align-items: center; gap: 8px; transition: background .15s;
     }
-    .new-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.45); }
-    .nav { list-style: none; padding: 0 10px; display: flex; flex-direction: column; gap: 2px; }
-    .nav-btn {
-      width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-      border-radius: 10px; border: none; background: transparent; color: var(--text-muted);
-      font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all .15s;
-    }
-    .nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-    .nav-btn.active { background: rgba(124,58,237,0.12); color: #c084fc; font-weight: 600; }
-    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; height: 100%; }
+    .history-item:hover { background: #212121; color: #fff; }
+    .sb-bottom { padding: 12px 14px; border-top: 1px solid #262626; margin-top: auto; }
+    .user-card { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; cursor: pointer; }
+    .user-card:hover { background: #212121; }
+    .user-av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+
+    /* ─── MAIN CHAT VIEW ─── */
+    .main { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
     .topbar {
-      height: 56px; display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px; border-bottom: 1px solid var(--border); backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px); z-index: 20; shrink: 0;
+      height: 60px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 20; shrink: 0;
     }
-    .model-pill {
-      display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-      background: rgba(255,255,255,0.04); border: 1px solid var(--border); font-size: 12.5px;
-      font-weight: 600; color: var(--text);
-    }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.7); }
     .btn-circle {
-      width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center;
-      justify-content: center; cursor: pointer; transition: all .2s;
+      width: 40px; height: 40px; border-radius: 50%; background: #212121; border: none;
+      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: transform .15s, background .15s;
     }
-    .btn-circle:hover { background: rgba(255,255,255,0.08); color: var(--text); transform: scale(1.05); }
-    .chat-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 110px; }
-    .chat-flow { width: 100%; max-width: 740px; display: flex; flex-direction: column; gap: 20px; }
-    .welcome { display: flex; flex-direction: column; align-items: center; text-align: center; margin: auto 0; padding: 40px 12px 20px; }
-    .w-logo {
-      width: 64px; height: 64px; border-radius: 20px; background: rgba(124,58,237,0.18);
-      border: 1px solid rgba(124,58,237,0.35); box-shadow: 0 10px 30px rgba(124,58,237,0.3);
-      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+    .btn-circle:hover { background: #2a2a2a; color: #fff; }
+    .btn-circle:active { transform: scale(0.92); }
+    .get-plus-pill {
+      display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px;
+      background: #1b2533; border: 1px solid rgba(43,76,126,0.4); color: #5ba2f8;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
     }
-    .w-logo img { width: 36px; height: 36px; }
-    .w-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
-    .w-sub { font-size: 14.5px; color: var(--text-muted); max-width: 440px; line-height: 1.6; margin-bottom: 30px; }
-    .bento { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 640px; }
-    @media(max-width: 600px) { .bento { grid-template-columns: 1fr; } }
-    .card {
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 16px;
-      padding: 16px; text-align: left; cursor: pointer; display: flex; flex-direction: column;
-      justify-content: space-between; height: 118px; transition: all .2s; font-family: inherit;
+    .get-plus-pill:hover { background: #213042; }
+    .get-plus-pill:active { transform: scale(0.95); }
+
+    /* ─── CHAT AREA ─── */
+    .chat-scroll {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
+      padding: 16px 16px 120px;
     }
-    .card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.06); border-color: rgba(124,58,237,0.4); }
-    .msg-row { display: flex; gap: 12px; opacity: 0; animation: msgIn .25s ease forwards; }
-    @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .msg-row.user { justify-content: flex-end; }
-    .bot-av {
-      width: 32px; height: 32px; border-radius: 10px; background: rgba(124,58,237,0.15);
-      border: 1px solid rgba(124,58,237,0.3); display: flex; align-items: center; justify-content: center; shrink: 0;
+    .chat-flow { width: 100%; max-width: 680px; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+    .welcome-starters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .starter-btn {
+      display: flex; align-items: center; gap: 12px; background: none; border: none;
+      color: #e5e5e5; font-size: 15px; font-family: inherit; padding: 8px 4px;
+      cursor: pointer; text-align: left; transition: color .15s;
     }
-    .bot-av img { width: 18px; height: 18px; }
-    .msg-col { display: flex; flex-direction: column; max-width: 82%; }
-    .msg-row.user .msg-col { align-items: flex-end; }
-    .bubble { padding: 12px 18px; border-radius: 18px; font-size: 14.5px; line-height: 1.6; word-break: break-word; }
-    .msg-row.user .bubble { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border-bottom-right-radius: 4px; }
-    .msg-row.bot .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-    .code-box { margin: 10px 0; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #0c0d13; }
-    .code-top { display: flex; justify-content: space-between; padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(255,255,255,0.04); color: var(--text-dim); }
-    .code-pre { padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; overflow-x: auto; color: #e2e8f0; }
-    .dock-area {
-      position: absolute; bottom: 0; left: 0; right: 0; padding: 0 16px 18px;
+    .starter-btn:hover { color: #ffffff; }
+    .starter-btn svg { color: #8e8ea0; transition: color .15s; }
+    .starter-btn:hover svg { color: #ffffff; }
+
+    /* Messages */
+    .msg-group { display: flex; flex-direction: column; gap: 18px; padding-top: 10px; }
+    .msg-row { display: flex; flex-direction: column; animation: msgFade .25s ease forwards; }
+    @keyframes msgFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-row.user { align-items: flex-end; }
+    .msg-row.bot { align-items: flex-start; }
+    .user-bubble {
+      background: #212121; color: #fff; padding: 12px 18px; border-radius: 24px;
+      border-bottom-right-radius: 6px; font-size: 15.5px; line-height: 1.55; max-width: 82%;
+    }
+    .bot-content { font-size: 15.5px; line-height: 1.65; color: #ececec; max-width: 100%; width: 100%; }
+    .bot-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .bot-logo-sq { width: 24px; height: 24px; border-radius: 6px; background: #212121; border: 1px solid #333; padding: 3px; display: flex; align-items: center; justify-content: center; }
+    .bot-logo-sq img { width: 100%; height: 100%; object-fit: contain; }
+    .cursor-blink { display: inline-block; width: 6px; height: 16px; background: #fff; margin-left: 4px; animation: blink 1s infinite; vertical-align: middle; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Code Block */
+    .code-card { margin: 12px 0; border-radius: 12px; overflow: hidden; border: 1px solid #333; background: #0d0d0d; }
+    .code-top { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; background: #1a1a1a; color: #8e8ea0; }
+    .code-body { padding: 12px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #f4f4f5; line-height: 1.6; }
+
+    /* ─── BOTTOM CHATGPT INPUT DOCK ─── */
+    .dock-wrap {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 0 16px 16px;
       display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 30;
     }
     .dock-inner { width: 100%; max-width: 680px; pointer-events: auto; }
-    .dock {
-      background: var(--dock); border: 1px solid var(--border); border-radius: 22px;
-      padding: 8px 10px 8px 16px; display: flex; flex-direction: column; gap: 6px;
-      backdrop-filter: blur(24px); box-shadow: 0 16px 40px rgba(0,0,0,0.35); transition: border-color .2s;
+    .dock-pill {
+      background: #212121; border: 1px solid #2e2e2e; border-radius: 999px;
+      padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); transition: border-color .2s;
     }
-    .dock:focus-within { border-color: var(--border-focus); }
-    .dock-row { display: flex; align-items: flex-end; gap: 8px; }
+    .dock-pill:focus-within { border-color: #454545; }
+    .attach-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: #2f2f2f; border: none;
+      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; shrink: 0;
+    }
+    .attach-btn:hover { background: #3a3a3a; color: #fff; }
+    .attach-btn:active { transform: scale(0.9); }
     #chatInput {
-      flex: 1; background: transparent; border: none; outline: none; color: var(--text);
-      font-family: inherit; font-size: 14.5px; line-height: 1.5; resize: none; max-height: 150px; padding: 6px 0;
+      flex: 1; background: transparent; border: none; outline: none; color: #fff;
+      font-family: inherit; font-size: 15.5px; resize: none; max-height: 140px; padding: 6px 0;
     }
-    .send-btn {
-      width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: none;
-      color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(124,58,237,0.5); transition: transform .2s; shrink: 0;
+    #chatInput::placeholder { color: #8e8ea0; }
+    .mic-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; shrink: 0;
     }
-    .send-btn:hover { transform: scale(1.08); }
-    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
-    .chips { display: flex; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); }
-    .chip {
-      padding: 3px 9px; border-radius: 7px; background: transparent; border: 1px solid transparent;
-      color: var(--text-muted); font-size: 11.5px; cursor: pointer; transition: all .15s; font-family: inherit;
+    .mic-btn:hover { background: #2f2f2f; color: #fff; }
+    .blue-voice-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: #2b82f6; border: none;
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(43,130,246,0.35); transition: transform .15s; shrink: 0;
     }
-    .chip:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-    .chip.active { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.35); color: #c084fc; font-weight: 600; }
+    .blue-voice-btn:hover { background: #2575e0; }
+    .blue-voice-btn:active { transform: scale(0.9); }
+    .voice-bars { display: flex; align-items: center; gap: 2px; height: 16px; }
+    .v-bar { width: 2.5px; background: #fff; border-radius: 2px; animation: bounceBar 1.2s infinite ease-in-out; }
+    .v-bar:nth-child(1) { height: 10px; animation-delay: 0s; }
+    .v-bar:nth-child(2) { height: 16px; animation-delay: 0.18s; }
+    .v-bar:nth-child(3) { height: 8px; animation-delay: 0.36s; }
+    @keyframes bounceBar { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1.1); } }
+    .send-arrow-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: #ffffff; border: none;
+      color: #000; display: none; align-items: center; justify-content: center;
+      cursor: pointer; transition: transform .15s; shrink: 0; font-weight: 700;
+    }
+    .send-arrow-btn:active { transform: scale(0.9); }
+
+    /* ─── FULLSCREEN LIVE VOICE MODE OVERLAY ─── */
+    .voice-overlay {
+      display: none; position: fixed; inset: 0; background: #000000; z-index: 200;
+      flex-direction: column; justify-content: space-between; padding: 24px;
+    }
+    .voice-overlay.active { display: flex; }
+    .voice-orb {
+      width: 170px; height: 170px; border-radius: 50%; margin: auto;
+      background: radial-gradient(circle at 30% 30%, #38bdf8, #2563eb 60%, #7c3aed 100%);
+      box-shadow: 0 0 60px rgba(59,130,246,0.6); display: flex; align-items: center;
+      justify-content: center; animation: orbPulse 3s infinite ease-in-out;
+    }
+    @keyframes orbPulse { 0%, 100% { transform: scale(1); filter: blur(0px); } 50% { transform: scale(1.15); filter: blur(1px); } }
   </style>
 </head>
 <body>
-<div class="flare"></div>
-<div class="sb-mask" id="sbMask" onclick="closeSidebar()"></div>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeSidebar()"></div>
 
 <div class="app">
-  <aside class="sb" id="sb">
-    <div class="brand">
-      <div class="brand-id">
-        <div class="logo-sq">
-          <img src="https://api.iconify.design/lucide:sparkles.svg?color=%23c084fc" alt="V"/>
+
+  <!-- ── SIDEBAR DRAWER ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="sb-brand">
+        <div class="sb-logo">
+          <img src="data:image/png;base64,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" alt="Vektra"/>
         </div>
         <span>Vektra AI</span>
       </div>
+      <button onclick="closeSidebar()" style="background:none;border:none;color:#8e8ea0;cursor:pointer;font-size:16px;">✕</button>
     </div>
-    <button class="new-btn" onclick="newChat()">+ New Chat</button>
-    <ul class="nav">
-      <li><button class="nav-btn active">Chat Workspace</button></li>
-      <li><button class="nav-btn">Projects & Prompts</button></li>
-      <li><button class="nav-btn">Autonomous Agents</button></li>
-    </ul>
+
+    <div class="sb-actions">
+      <button class="new-chat-btn" onclick="startNewChat()">
+        <span>+ New chat</span>
+        <span style="color:#737373;">⌘K</span>
+      </button>
+      <input type="text" class="search-box" placeholder="Search conversations..."/>
+    </div>
+
+    <div class="history-list">
+      <div class="history-group-title">Today</div>
+      <div class="history-item" onclick="closeSidebar()">Web UI Prototype Analysis</div>
+      <div class="history-item" onclick="closeSidebar()">TypeScript Systems Architecture</div>
+      <div class="history-group-title">Yesterday</div>
+      <div class="history-item" onclick="closeSidebar()">Vision Diagnostics Flow</div>
+      <div class="history-group-title">Previous 7 Days</div>
+      <div class="history-item" onclick="closeSidebar()">Design System Tokens</div>
+    </div>
+
+    <div class="sb-bottom">
+      <div class="user-card" onclick="alert('Vektra Pro: Unlimited tokens active')">
+        <div class="user-av">V</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;">Vektra Pro</div>
+          <div style="font-size:11px;color:#737373;">Upgrade workspace</div>
+        </div>
+      </div>
+    </div>
   </aside>
 
+  <!-- ── MAIN CHAT VIEW (Identical to ChatGPT) ── -->
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div class="model-pill">
-          <div class="dot"></div>
-          <span>Vektra Omni 3.5</span>
-        </div>
+        <!-- Circular Menu Button (=) -->
+        <button class="btn-circle" onclick="openSidebar()" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/></svg>
+        </button>
+        <!-- ChatGPT 'Get Plus' Pill -->
+        <button class="get-plus-pill" onclick="alert('Vektra Plus Enterprise: Unlimited reasoning unlocked!')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+          Get Plus
+        </button>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn-circle" onclick="toggleTheme()" title="Theme">◐</button>
-      </div>
+      <!-- Right Circular Compose Button -->
+      <button class="btn-circle" onclick="startNewChat()" title="New Chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
     </header>
 
-    <div class="chat-view" id="chatView">
+    <!-- Message Scroller Area -->
+    <div class="chat-scroll" id="chatScroller">
       <div class="chat-flow" id="chatFlow">
-        <div class="welcome" id="welcome">
-          <div class="w-logo">
-            <img src="https://api.iconify.design/lucide:bot.svg?color=%23c084fc" alt="Vektra"/>
-          </div>
-          <h1 class="w-title">Where should we focus today?</h1>
-          <p class="w-sub">Synthesize software, audit complex visual documents, execute live web intelligence, or articulate ideas through voice.</p>
-          <div class="bento">
-            <button class="card" onclick="quickSend('Summarize the top AI engineering breakthroughs this week')">
-              <span style="font-weight:700;font-size:14px;">Web Intelligence</span>
-              <span style="font-size:12px;color:var(--text-muted);">Live web search & multi-source synthesis</span>
-            </button>
-            <button class="card" onclick="quickSend('Architect a clean type-safe distributed queue in TypeScript')">
-              <span style="font-weight:700;font-size:14px;">Engineering Core</span>
-              <span style="font-size:12px;color:var(--text-muted);">Type-safe systems & algorithmic design</span>
-            </button>
-          </div>
+        <!-- Starter Rows (From Screenshot) -->
+        <div class="welcome-starters" id="welcomeStarters">
+          <button class="starter-btn" onclick="document.getElementById('hiddenFileInput').click()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Create an image or sticker
+          </button>
+          <button class="starter-btn" onclick="submitMessage('Write a clean executive summary')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            Write or edit
+          </button>
         </div>
+        <div class="msg-group" id="messagesList"></div>
       </div>
     </div>
 
-    <div class="dock-area">
+    <!-- Bottom ChatGPT Input Capsule Dock -->
+    <div class="dock-wrap">
       <div class="dock-inner">
-        <div class="dock">
-          <div class="dock-row">
-            <textarea id="chatInput" rows="1" placeholder="Ask Vektra anything..." oninput="autoGrow(this)" onkeydown="onKey(event)"></textarea>
-            <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>→</button>
-          </div>
-          <div class="chips">
-            <button class="chip" id="webChip" onclick="this.classList.toggle('active')">Web Grounding</button>
-            <button class="chip" id="thinkChip" onclick="this.classList.toggle('active')">Deep Reasoning</button>
-          </div>
+        <div class="dock-pill">
+          <!-- Hidden File Input -->
+          <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;" onchange="handleFileSelected(event)"/>
+          <!-- '+' Attachment Button -->
+          <button class="attach-btn" onclick="document.getElementById('hiddenFileInput').click()" title="Attachment">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <!-- Input -->
+          <textarea id="chatInput" rows="1" placeholder="Ask Vektra" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
+          <!-- Microphone Button -->
+          <button class="mic-btn" id="micBtn" onclick="toggleDictation()" title="Voice Dictation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <!-- Animated Blue Voice Mode Button -->
+          <button class="blue-voice-btn" id="voiceBtn" onclick="openVoiceMode()" title="Live Voice Mode">
+            <div class="voice-bars">
+              <span class="v-bar"></span><span class="v-bar"></span><span class="v-bar"></span>
+            </div>
+          </button>
+          <!-- Send Arrow Button (appears when typing) -->
+          <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          </button>
         </div>
       </div>
     </div>
   </main>
 </div>
 
-<script>
-  const API = 'https://vektrastudio-bot.onrender.com';
-  const SESS = 'sess_' + Math.random().toString(36).slice(2, 9);
-  const input = document.getElementById('chatInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const chatFlow = document.getElementById('chatFlow');
-  const chatView = document.getElementById('chatView');
+<!-- ── LIVE VOICE MODE OVERLAY ── -->
+<div class="voice-overlay" id="voiceOverlay">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#8e8ea0;">Vektra Voice Engine · Live</span>
+    <button onclick="closeVoiceMode()" style="width:36px;height:36px;border-radius:50%;background:#212121;border:none;color:#fff;cursor:pointer;">✕</button>
+  </div>
+  <div class="voice-orb"></div>
+  <div style="text-align:center;">
+    <p style="color:#a3a3a3;font-size:14.5px;">Listening... Speak freely.</p>
+  </div>
+</div>
 
-  input.addEventListener('input', () => {
-    sendBtn.disabled = !input.value.trim();
+<script>
+  const API_ENDPOINT = 'https://vektrastudio-bot.onrender.com';
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const micBtn = document.getElementById('micBtn');
+  const voiceBtn = document.getElementById('voiceBtn');
+  const messagesList = document.getElementById('messagesList');
+  const chatScroller = document.getElementById('chatScroller');
+  let isGenerating = false;
+
+  chatInput.addEventListener('input', () => {
+    const hasText = chatInput.value.trim().length > 0;
+    sendBtn.style.display = hasText ? 'flex' : 'none';
+    micBtn.style.display = hasText ? 'none' : 'flex';
+    voiceBtn.style.display = hasText ? 'none' : 'flex';
   });
 
   function autoGrow(el) {
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
   }
 
-  function onKey(e) {
+  function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!sendBtn.disabled) sendMessage();
+      submitMessage();
     }
   }
 
-  function toggleTheme() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    document.body.classList.toggle('light', !isDark);
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('drawerBackdrop').classList.add('active');
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('drawerBackdrop').classList.remove('active');
+  }
+
+  function openVoiceMode() { document.getElementById('voiceOverlay').classList.add('active'); }
+  function closeVoiceMode() { document.getElementById('voiceOverlay').classList.remove('active'); }
+
+  function startNewChat() {
+    messagesList.innerHTML = '';
+    document.getElementById('welcomeStarters').style.display = 'flex';
+    closeSidebar();
   }
 
   function renderMD(text) {
-    return text
-      .replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, '<div class="code-box"><div class="code-top">$1</div><pre class="code-pre"><code>$2</code></pre></div>')
-      .replace(/^### (.*$)/gim, '<h4 style="font-size:15px;margin:8px 0;">$1</h4>')
+    let out = text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, '<div class="code-card"><div class="code-top"><span>$1</span></div><pre class="code-body"><code>$2</code></pre></div>')
+      .replace(/^### (.*$)/gim, '<h4 style="font-size:15px;margin:10px 0 4px;">$1</h4>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 5px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>');
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>');
+    return out;
   }
 
-  function append(text, role) {
-    const w = document.getElementById('welcome');
-    if (w) w.style.display = 'none';
+  async function submitMessage(overrideText) {
+    const text = overrideText || chatInput.value.trim();
+    if (!text || isGenerating) return;
 
-    const row = document.createElement('div');
-    row.className = 'msg-row ' + role;
-    if (role === 'bot') {
-      row.innerHTML = `<div class="bot-av"><img src="https://api.iconify.design/lucide:sparkles.svg?color=%23c084fc"/></div>
-        <div class="msg-col"><div class="bubble">${renderMD(text)}</div></div>`;
-    } else {
-      row.innerHTML = `<div class="msg-col"><div class="bubble">${text}</div></div>`;
-    }
-    chatFlow.appendChild(row);
-    chatView.scrollTop = chatView.scrollHeight;
-  }
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    sendBtn.style.display = 'none';
+    micBtn.style.display = 'flex';
+    voiceBtn.style.display = 'flex';
+    document.getElementById('welcomeStarters').style.display = 'none';
 
-  async function sendMessage(preset) {
-    const text = preset || input.value.trim();
-    if (!text) return;
+    // Append User Message
+    const userRow = document.createElement('div');
+    userRow.className = 'msg-row user';
+    userRow.innerHTML = `<div class="user-bubble">${text}</div>`;
+    messagesList.appendChild(userRow);
 
-    input.value = '';
-    input.style.height = 'auto';
-    sendBtn.disabled = true;
-    append(text, 'user');
+    // Bot Response Container
+    const botRow = document.createElement('div');
+    botRow.className = 'msg-row bot';
+    botRow.innerHTML = `
+      <div class="bot-header">
+        <div class="bot-logo-sq"><img src="data:image/png;base64,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" alt="Vektra"/></div>
+        <span style="font-size:12px;font-weight:600;color:#8e8ea0;">Vektra</span>
+      </div>
+      <div class="bot-content" id="botContent"><span class="cursor-blink"></span></div>
+    `;
+    messagesList.appendChild(botRow);
+    chatScroller.scrollTop = chatScroller.scrollHeight;
+    isGenerating = true;
 
     try {
-      const res = await fetch(API + '/chat', {
+      const res = await fetch(API_ENDPOINT + '/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: SESS })
+        body: JSON.stringify({ message: text })
       });
       const data = await res.json();
-      append(data.reply || 'Analysis complete.', 'bot');
+      typewrite(data.reply || 'Response complete.', botRow.querySelector('#botContent'));
     } catch (_) {
-      append(`### Strategic Synthesis\nAnalyzing **"${text}"**:\n- **Focus**: Eliminate decision friction while maintaining high structural clarity.\n- **Render Status**: The backend server is spinning up. Ready for next prompt.`, 'bot');
+      typewrite(`I received: **"${text}"**.\n\n- **UI Design**: Modeled directly on ChatGPT's mobile structure with pitch black canvas, circular top navigation, and bottom prompt starters.\n- **Render Status**: The backend server is currently spinning up from sleep mode; offline processing is responsive.`, botRow.querySelector('#botContent'));
     }
-    sendBtn.disabled = !input.value.trim();
   }
 
-  function quickSend(txt) { sendMessage(txt); }
-  function newChat() {
-    chatFlow.innerHTML = '';
-    document.getElementById('welcome').style.display = 'flex';
+  function typewrite(fullText, container) {
+    let i = 0;
+    const interval = setInterval(() => {
+      i += 3;
+      if (i >= fullText.length) {
+        clearInterval(interval);
+        container.innerHTML = renderMD(fullText);
+        isGenerating = false;
+      } else {
+        container.innerHTML = renderMD(fullText.slice(0, i)) + '<span class="cursor-blink"></span>';
+      }
+      chatScroller.scrollTop = chatScroller.scrollHeight;
+    }, 22);
+  }
+
+  function handleFileSelected(e) {
+    const file = e.target.files[0];
+    if (file) submitMessage(`[Attached image: ${file.name}] Please inspect.`);
+  }
+
+  function toggleDictation() {
+    alert('Voice dictation active.');
   }
 </script>
 </body>
