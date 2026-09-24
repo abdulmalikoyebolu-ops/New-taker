@@ -288,4 +288,4 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Vektra AI Server running on port ${PORT}`);
-});
+}); 
