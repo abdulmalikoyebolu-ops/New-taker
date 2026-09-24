@@ -167,6 +167,7 @@ async function searchWeb(query) {
 
 // ─── HTTP Server & CORS ───────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -179,10 +180,49 @@ const server = http.createServer(async (req, res) => {
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
 
-  if (parsedUrl.pathname === '/' || parsedUrl.pathname === '/health') {
+  // Health check endpoint for monitoring
+  if (parsedUrl.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', service: 'Vektra AI Server', version: '2.4.0' }));
     return;
+  }
+
+  // ─── Serve index.html and static files ──────────────────────────────────────
+  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/index.html')) {
+    const htmlPath = path.join(__dirname, 'index.html');
+    if (fs.existsSync(htmlPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      fs.createReadStream(htmlPath).pipe(res);
+      return;
+    }
+  }
+
+  // Serve static assets if present (e.g., manifest.json, sw.js, logo, etc.)
+  if (req.method === 'GET' && !parsedUrl.pathname.startsWith('/chat') && !parsedUrl.pathname.startsWith('/transcribe')) {
+    const cleanPath = path.normalize(parsedUrl.pathname).replace(/^(\.\.[\/\\])+/, '');
+    const possiblePaths = [
+      path.join(__dirname, cleanPath),
+      path.join(__dirname, 'public', cleanPath)
+    ];
+
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeTypes = {
+          '.html': 'text/html; charset=utf-8',
+          '.js': 'application/javascript; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.json': 'application/json',
+          '.svg': 'image/svg+xml',
+          '.png': 'image/png',
+          '.ico': 'image/x-icon',
+          '.txt': 'text/plain; charset=utf-8'
+        };
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+    }
   }
 
   // ─── POST /chat ─────────────────────────────────────────────────────────────
@@ -194,7 +234,7 @@ const server = http.createServer(async (req, res) => {
         const payload = JSON.parse(body || '{}');
         const sessionId = payload.sessionId || 'default';
         const userMessage = (payload.message || '').trim();
-        const image = payload.image;
+        const image = payload.image; // { base64: "...", mimeType: "image/jpeg" }
 
         if (!webSessions[sessionId]) {
           webSessions[sessionId] = [];
@@ -203,6 +243,7 @@ const server = http.createServer(async (req, res) => {
         const history = webSessions[sessionId];
         let reply = '';
 
+        // Case 1: Image sent
         if (image && image.base64) {
           const mime = image.mimeType || 'image/jpeg';
           const dataUrl = image.base64.startsWith('data:') ? image.base64 : `data:${mime};base64,${image.base64}`;
@@ -225,7 +266,10 @@ const server = http.createServer(async (req, res) => {
             console.warn(`Vision model ${VISION_MODEL} failed, trying fallback:`, err.message);
             reply = await askGroq(visionMessages, VISION_FALLBACK);
           }
-        } else {
+        } 
+        // Case 2: Standard Text / Search
+        else {
+          // Check if search is beneficial (queries with current events, weather, stock, who won, 2025, 2026, latest)
           const needsSearch = /\b(weather|stock|news|score|release date|today|yesterday|latest|price of|who is the current)\b/i.test(userMessage);
           let searchContext = '';
 
@@ -245,6 +289,7 @@ const server = http.createServer(async (req, res) => {
           reply = await askGroq(promptMessages, CHAT_MODEL);
         }
 
+        // Save conversation turn
         history.push({ role: 'user', content: userMessage || '[Sent an image]' });
         history.push({ role: 'assistant', content: reply });
         if (history.length > MAX_HISTORY * 2) {
@@ -262,7 +307,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ─── POST /transcribe ───────────────────────────────────────────────────────
+  // ─── POST /transcribe (Audio Voice Notes) ───────────────────────────────────
   if (parsedUrl.pathname === '/transcribe' && req.method === 'POST') {
     const chunks = [];
     req.on('data', chunk => { chunks.push(chunk); });
@@ -282,10 +327,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Endpoint not found' }));
 });
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Vektra AI Server running on port ${PORT}`);
-}); 
+});
