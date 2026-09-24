@@ -166,7 +166,7 @@
     .bot-content p { margin-bottom: 12px; }
     .bot-content p:last-child { margin-bottom: 0; }
     
-    /* Clean Bullets in Single Unified Bubble with Comfortable Spacing */
+    /* Clean Bullets in Single Unified Bubble */
     .bot-bullet-row {
       display: flex; align-items: flex-start; gap: 12px; padding: 3px 0; margin: 4px 0;
     }
@@ -193,7 +193,7 @@
     }
     @keyframes pulseOpacity { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
 
-    /* Action buttons below messages (Copy, Share, Thumbs) */
+    /* Action buttons below messages */
     .msg-actions {
       display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #737373;
     }
@@ -261,7 +261,7 @@
     }
     @keyframes typingAuraPulse {
       0%, 100% { opacity: 0.35; transform: scale(0.85); }
-      50% { opacity: 0.95; transform: scale(1.2); }
+      50% { opacity: 1.2; transform: scale(1.2); }
     }
     .typing-trailing-dot {
       display: inline-block;
@@ -416,7 +416,7 @@
 </head>
 <body>
 
-<!-- Master Global Permanent SVG Gradients -->
+<!-- Master Global SVG Gradients -->
 <svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;" aria-hidden="true">
   <defs>
     <linearGradient id="vektraPermCyan" x1="0%" y1="0%" x2="50%" y2="100%">
@@ -608,7 +608,7 @@
     <div class="dock-wrap">
       <div class="dock-inner" id="dockInner">
         <div class="dock-pill" id="dockPill">
-          <!-- Attached Image Preview Container (stays docked like ChatGPT until sent) -->
+          <!-- Attached Image Preview Container -->
           <div class="dock-attached-preview" id="dockAttachedPreview" style="display:none;">
             <div class="dock-preview-card">
               <img id="dockPreviewImg" class="dock-preview-img" src="" alt="Attachment" />
@@ -710,7 +710,7 @@
   let currentAnimId = null;
   let currentBotMsgId = null;
 
-  let currentAttachedImage = null; // { file, dataUrl, name }
+  let currentAttachedImage = null;
 
   function handleFileSelected(e) {
     const file = e.target.files && e.target.files[0];
@@ -771,7 +771,6 @@
   function updateDockButtons() {
     const hasText = chatInput.value.trim().length > 0;
     const hasImage = !!currentAttachedImage;
-    // Mic is ALWAYS visible so user can record while typing!
     micBtn.style.display = 'flex';
     if (isGenerating) {
       sendBtn.style.display = 'none';
@@ -788,11 +787,117 @@
     }
   }
 
-  // Voice recording while typing (Deduplicated speech recognition)
+  // ─── Voice recording while typing (Deduplicated Speech Recognition) ───
   let isVoiceRecording = false;
   let recognitionInstance = null;
   let baseTextBeforeRecording = '';
-  let finalTranscriptsByIndex = {};
+  let accumulatedVoiceText = '';
+
+  function cleanSpeechRepetitions(text) {
+    if (!text) return '';
+    let words = text.trim().split(/\s+/);
+    if (words.length <= 1) return text.trim();
+
+    // Eliminate immediate phrase loops from 6 words down to 1 word
+    for (let phraseLen = 6; phraseLen >= 1; phraseLen--) {
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let i = 0; i <= words.length - (phraseLen * 2); i++) {
+          let match = true;
+          for (let j = 0; j < phraseLen; j++) {
+            if (words[i + j].toLowerCase() !== words[i + phraseLen + j].toLowerCase()) {
+              match = false;
+              break;
+            }
+          }
+          if (match) {
+            words.splice(i + phraseLen, phraseLen);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    return words.join(' ');
+  }
+
+  function startRecognitionEngine() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return;
+
+    try {
+      recognitionInstance = new SpeechRec();
+      recognitionInstance.continuous = false; // Prevents cumulative phrase stutter on mobile
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+
+      recognitionInstance.onstart = () => {
+        isVoiceRecording = true;
+        micBtn.classList.add('recording');
+        micBtn.title = 'Recording voice... tap to stop';
+      };
+
+      let sessionInterim = '';
+
+      recognitionInstance.onresult = (e) => {
+        let interim = '';
+        let finalChunk = '';
+
+        for (let i = 0; i < e.results.length; ++i) {
+          const item = e.results[i];
+          if (item && item[0]) {
+            if (item.isFinal) {
+              finalChunk = item[0].transcript.trim();
+            } else {
+              interim = item[0].transcript.trim();
+            }
+          }
+        }
+
+        if (finalChunk) {
+          accumulatedVoiceText = cleanSpeechRepetitions([accumulatedVoiceText, finalChunk].filter(Boolean).join(' '));
+          sessionInterim = '';
+        } else {
+          sessionInterim = interim;
+        }
+
+        const currentSpoken = cleanSpeechRepetitions([accumulatedVoiceText, sessionInterim].filter(Boolean).join(' '));
+        chatInput.value = baseTextBeforeRecording
+          ? baseTextBeforeRecording + (currentSpoken ? ' ' + currentSpoken : '')
+          : currentSpoken;
+
+        autoGrow(chatInput);
+        updateDockButtons();
+      };
+
+      recognitionInstance.onerror = (err) => {
+        if (err && err.error === 'no-speech') {
+          if (isVoiceRecording) {
+            try { recognitionInstance.start(); } catch (_) {}
+          }
+          return;
+        }
+        stopVoiceRecording();
+      };
+
+      recognitionInstance.onend = () => {
+        if (isVoiceRecording) {
+          try {
+            recognitionInstance.start();
+          } catch (_) {
+            stopVoiceRecording();
+          }
+        } else {
+          stopVoiceRecording();
+        }
+      };
+
+      recognitionInstance.start();
+    } catch (_) {
+      stopVoiceRecording();
+    }
+  }
 
   function toggleVoiceRecording() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -805,75 +910,21 @@
       return;
     }
 
-    try {
-      recognitionInstance = new SpeechRec();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'en-US';
-
-      // Capture initial text typed before recording began
-      baseTextBeforeRecording = chatInput.value.trim();
-      finalTranscriptsByIndex = {};
-
-      recognitionInstance.onstart = () => {
-        isVoiceRecording = true;
-        micBtn.classList.add('recording');
-        micBtn.title = 'Recording voice... click to stop';
-      };
-
-      recognitionInstance.onresult = (e) => {
-        let interim = '';
-        for (let i = e.resultIndex; i < e.results.length; ++i) {
-          const item = e.results[i];
-          if (item && item[0]) {
-            const transcriptChunk = item[0].transcript;
-            if (item.isFinal) {
-              // Store by result index so re-emitted phrases overwrite rather than duplicate!
-              finalTranscriptsByIndex[i] = transcriptChunk.trim();
-            } else {
-              interim += transcriptChunk;
-            }
-          }
-        }
-
-        // Reconstruct spoken words cleanly in sequential index order
-        const allFinalParts = Object.keys(finalTranscriptsByIndex)
-          .sort((a, b) => Number(a) - Number(b))
-          .map(k => finalTranscriptsByIndex[k])
-          .filter(Boolean)
-          .join(' ');
-
-        const spokenNow = [allFinalParts, interim.trim()].filter(Boolean).join(' ');
-
-        chatInput.value = baseTextBeforeRecording
-          ? baseTextBeforeRecording + (spokenNow ? ' ' + spokenNow : '')
-          : spokenNow;
-
-        autoGrow(chatInput);
-        updateDockButtons();
-      };
-
-      recognitionInstance.onerror = (err) => {
-        if (err && err.error === 'no-speech') return; // Ignore brief silence
-        stopVoiceRecording();
-      };
-
-      recognitionInstance.onend = () => {
-        stopVoiceRecording();
-      };
-
-      recognitionInstance.start();
-    } catch {
-      stopVoiceRecording();
-    }
+    baseTextBeforeRecording = chatInput.value.trim();
+    accumulatedVoiceText = '';
+    isVoiceRecording = true;
+    startRecognitionEngine();
   }
 
   function stopVoiceRecording() {
+    isVoiceRecording = false;
     if (recognitionInstance) {
-      try { recognitionInstance.stop(); } catch (_) {}
+      try { recognitionInstance.abort(); } catch (_) {}
       recognitionInstance = null;
     }
-    isVoiceRecording = false;
+    if (chatInput.value) {
+      chatInput.value = cleanSpeechRepetitions(chatInput.value);
+    }
     micBtn.classList.remove('recording');
     micBtn.title = 'Record voice while typing';
     updateDockButtons();
@@ -918,7 +969,6 @@
     updateDockButtons();
   });
 
-  // Support pasting image directly from clipboard into the input bar
   chatInput.addEventListener('paste', (e) => {
     const items = (e.clipboardData || window.clipboardData)?.items;
     if (!items) return;
@@ -1137,11 +1187,8 @@
       .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12.5px;color:#38bdf8;">$1</code>');
   }
 
-  const KEYCAPS = { 1: '1️⃣', 2: '2️⃣', 3: '3️⃣', 4: '4️⃣', 5: '5️⃣', 6: '6️⃣', 7: '7️⃣', 8: '8️⃣', 9: '9️⃣', 10: '🔟' };
-
   function renderMD(text) {
     if (!text) return '';
-    // Auto-break emoji numbered items (1️⃣, 2️⃣, 3️⃣) or numbered points so they never mash together
     let t = text.replace(/([^\n])\s*([0-9]️⃣|🔟)/g, '$1\n\n$2');
     t = t.replace(/([^\n])\s+(\d+[\.\)\-]\s+)/g, '$1\n\n$2');
 
@@ -1152,24 +1199,20 @@
         let l = line.trim();
         if (!l) return '';
 
-        // Headers
         if (l.startsWith('### ')) return `<h4 style="font-size:16px;font-weight:700;margin:12px 0 6px;">${formatInlineText(l.slice(4))}</h4>`;
         if (l.startsWith('## ')) return `<h3 style="font-size:17px;font-weight:700;margin:14px 0 6px;">${formatInlineText(l.slice(3))}</h3>`;
         if (l.startsWith('# ')) return `<h2 style="font-size:19px;font-weight:800;margin:16px 0 8px;">${formatInlineText(l.slice(2))}</h2>`;
 
-        // Emoji numbered items (1️⃣, 2️⃣, etc.) -> Clean bullet in single bubble
         const emojiMatch = l.match(/^([0-9]️⃣|🔟)\s*(.*)/);
         if (emojiMatch) {
           return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(emojiMatch[2])}</div></div>`;
         }
 
-        // Standard numbered list (1. 2. 1) 2)) -> Clean bullet in single bubble
         const numMatch = l.match(/^(\d+)[\.\)\-]\s+(.*)/);
         if (numMatch) {
           return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(numMatch[2])}</div></div>`;
         }
 
-        // Bullet point -> Clean bullet in single bubble
         if (l.startsWith('- ') || l.startsWith('* ')) {
           return `<div class="bot-bullet-row"><span class="bot-bullet-dot"></span><div class="bot-bullet-body">${formatInlineText(l.slice(2))}</div></div>`;
         }
@@ -1189,7 +1232,6 @@
 
     if ((!text && !attachedImageToSend) || isGenerating) return;
 
-    // Reset attached preview immediately from dock bar
     removeAttachedImage();
 
     const historyTitle = text || (attachedImageToSend ? '📷 ' + attachedImageToSend.name : 'Image message');
@@ -1209,7 +1251,6 @@
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     const userMsgId = 'usr_' + Date.now();
 
-    // User Message Row with Image Thumbnail & Caption
     let userBubbleHtml = '';
     if (attachedImageToSend) {
       userBubbleHtml += `
@@ -1244,7 +1285,6 @@
     `;
     messagesList.appendChild(userRow);
 
-    // Bot Response Container with Rolling Logo & Dynamic Status
     const botMsgId = 'msg_' + Date.now();
     const botRow = document.createElement('div');
     botRow.id = botMsgId;
@@ -1252,7 +1292,7 @@
     botRow.innerHTML = `
       <div class="thinking-row" id="thinking_${botMsgId}">
         <div class="rolling-logo">${VEKTRA_SVG_MARK}</div>
-        <span class="thinking-text" id="status_${botMsgId}">${attachedImageToSend ? 'Analyzing uploaded image...' : 'Searching knowledge base...'}</span>
+        <span class="thinking-text" id="status_${botMsgId}">${attachedImageToSend ? 'Looking at image...' : 'Thinking & analyzing...'}</span>
       </div>
       <div class="bot-content" id="content_${botMsgId}"></div>
       <div class="msg-actions" id="actions_${botMsgId}" style="display:none;"></div>
@@ -1265,25 +1305,33 @@
 
     currentAbortController = new AbortController();
 
-    const promptToSend = text || (attachedImageToSend ? `[Attached image: ${attachedImageToSend.name}] Please inspect and analyze this image.` : '');
-
-    // Cycle thinking status
     const statusEl = document.getElementById(`status_${botMsgId}`);
-    const t1 = setTimeout(() => { if (statusEl) statusEl.innerText = attachedImageToSend ? 'Processing visual elements...' : 'Thinking & analyzing...'; }, 1100);
-    const t2 = setTimeout(() => { if (statusEl) statusEl.innerText = 'Synthesizing response...'; }, 2200);
+    const t1 = setTimeout(() => { if (statusEl) statusEl.innerText = attachedImageToSend ? 'Looking at image...' : 'Thinking & analyzing...'; }, 1100);
+    const t2 = setTimeout(() => { if (statusEl) statusEl.innerText = 'Replying...'; }, 2200);
 
     try {
+      const payload = {
+        message: text || '',
+        sessionId: localStorage.getItem('vektra_session_id') || 'web_user',
+        memory: localStorage.getItem('vektra_mem') || ''
+      };
+
+      if (attachedImageToSend) {
+        payload.image = attachedImageToSend.dataUrl;
+        payload.mimeType = (attachedImageToSend.file && attachedImageToSend.file.type) || 'image/jpeg';
+        payload.caption = text || '';
+      }
+
       const res = await fetch(API_ENDPOINT + '/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: promptToSend,
-          image: attachedImageToSend ? attachedImageToSend.dataUrl : null,
-          imageBase64: attachedImageToSend ? attachedImageToSend.dataUrl : null
-        }),
+        body: JSON.stringify(payload),
         signal: currentAbortController.signal
       });
       const data = await res.json();
+      if (data && data.memory) {
+        localStorage.setItem('vektra_mem', data.memory);
+      }
       clearTimeout(t1);
       clearTimeout(t2);
       if (isGenerating) {
@@ -1297,9 +1345,9 @@
       }
       if (isGenerating) {
         if (attachedImageToSend) {
-          typewrite(`I received your uploaded image **"${attachedImageToSend.name}"**${text ? ` with request: **"${text}"**` : ''}.\n\n1️⃣ **Attachment Verified** – Successfully staged and loaded in the message stream.\n2️⃣ **Visual Analysis** – The image attributes and details have been reviewed.\n3️⃣ **Next Action** – Let me know what specific questions, edits, or information you need about it!`, botMsgId);
+          typewrite(`Omo that looks delicious! 😋 Where did you get that from?`, botMsgId);
         } else {
-          typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.\n3️⃣ **Clean Stream** – Blinking bar cursor removed.`, botMsgId);
+          typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.`, botMsgId);
         }
       }
     }
@@ -1373,7 +1421,6 @@
           isGenerating = false;
           updateDockButtons();
 
-          // Render Action Buttons below bot response
           if (actionsRow) {
             const botTimeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             const safeText = encodeURIComponent(fullText);
