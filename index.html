@@ -51,8 +51,7 @@
     }
     .sb-brand { display: flex; align-items: center; gap: 10px; }
     .sb-logo-standalone {
-      width: 28px; height: 28px; object-fit: contain;
-      filter: drop-shadow(0 0 8px rgba(56,189,248,0.5));
+      width: 28px; height: 28px; flex-shrink: 0; display: block;
     }
     .sb-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
     .sb-search-btn {
@@ -171,18 +170,23 @@
       display: flex; align-items: center; gap: 10px; padding: 6px 2px 10px;
     }
     .rolling-logo {
-      width: 24px; height: 24px; animation: rollLogo 2.5s linear infinite;
-      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.7));
+      width: 24px; height: 24px; animation: rollLogo 2.5s linear infinite; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
     }
+    .rolling-logo svg { width: 100%; height: 100%; display: block; }
     @keyframes rollLogo { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .thinking-text {
       font-size: 13px; font-weight: 500; color: #38bdf8; animation: pulseOpacity 1.5s ease-in-out infinite;
     }
     @keyframes pulseOpacity { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
 
-    /* Action buttons below messages (Copy, Share, Thumbs) */
+    /* Action buttons below messages (Copy, Share, Thumbs, Pin) */
     .msg-actions {
       display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #737373;
+    }
+    .msg-timestamp {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      letter-spacing: -0.01em; user-select: none; opacity: 0.85; padding-right: 2px;
     }
     .user-actions { justify-content: flex-end; opacity: 0.75; transition: opacity .15s; }
     .user-actions:hover { opacity: 1; }
@@ -194,6 +198,45 @@
     .action-btn:hover { background: var(--surface); color: var(--text); }
     .action-btn.good:hover { color: #10b981; }
     .action-btn.bad:hover { color: #f43f5e; }
+    .action-btn.pinned { color: #38bdf8; background: rgba(56,189,248,0.15); }
+
+    /* Pinned Messages Header Bar */
+    .pinned-bar-wrap {
+      width: 100%; display: flex; justify-content: center; padding: 4px 16px 8px; z-index: 25; shrink: 0;
+    }
+    .pinned-box {
+      width: 100%; max-width: 680px; border-radius: 16px;
+      background: rgba(20, 20, 22, 0.95); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    body.light .pinned-box {
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    .pinned-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 8px 14px;
+    }
+    .pinned-badge-chip {
+      display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text);
+      cursor: pointer; background: none; border: none; font-family: inherit;
+    }
+    .pinned-count-tag {
+      background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 11px; font-weight: 800;
+      padding: 1px 7px; border-radius: 999px;
+    }
+    .pinned-list-drawer {
+      padding: 6px 12px 12px; border-top: 1px solid var(--border); max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+    }
+    .pinned-card {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border); font-size: 12.5px; cursor: pointer;
+    }
+    .pinned-jump-btn {
+      color: #38bdf8; font-weight: 600; font-size: 11px; background: rgba(56,189,248,0.1);
+      border: none; border-radius: 6px; padding: 3px 8px; cursor: pointer;
+    }
 
     /* Subtle Fluid Typing Text Animation */
     @keyframes fluidTextFadeIn {
@@ -312,7 +355,66 @@
   <aside class="sidebar" id="sidebar">
     <div class="sb-header">
       <div class="sb-brand">
-        <img src="/vektra-logo.svg" alt="Vektra" class="sb-logo-standalone"/>
+        <svg class="sb-logo-standalone" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="sbTopCyan" x1="0%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#38e1ff"/>
+              <stop offset="60%" stop-color="#00b4d8"/>
+              <stop offset="100%" stop-color="#2563eb"/>
+            </linearGradient>
+            <linearGradient id="sbBottomPink" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#6366f1"/>
+              <stop offset="60%" stop-color="#a855f7"/>
+              <stop offset="100%" stop-color="#f43f5e"/>
+            </linearGradient>
+            <linearGradient id="sbHorizRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
+              <stop offset="0%" stop-color="#00f2fe"/>
+              <stop offset="35%" stop-color="#38bdf8"/>
+              <stop offset="65%" stop-color="#6366f1"/>
+              <stop offset="100%" stop-color="#c084fc"/>
+            </linearGradient>
+            <linearGradient id="sbVertRibbon" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#38e1ff"/>
+              <stop offset="30%" stop-color="#2563eb"/>
+              <stop offset="70%" stop-color="#8b5cf6"/>
+              <stop offset="100%" stop-color="#ec4899"/>
+            </linearGradient>
+            <linearGradient id="sbDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#60a5fa"/>
+              <stop offset="50%" stop-color="#2563eb"/>
+              <stop offset="100%" stop-color="#4338ca"/>
+            </linearGradient>
+          </defs>
+          <path d="M 28 250 C 100 135, 400 135, 472 250 C 400 365, 100 365, 28 250 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+          <path d="M 250 28 C 135 100, 135 400, 250 472 C 365 400, 365 100, 250 28 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+          <path d="M 34 250 C 104 140, 396 140, 466 250 C 396 360, 104 360, 34 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+          <path d="M 250 34 C 140 104, 140 396, 250 466 C 360 396, 360 104, 250 34 Z" stroke="url(#sbVertRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+          <path d="M 64 250 C 124 165, 376 165, 436 250 C 376 335, 124 335, 64 250 Z" stroke="#000000" stroke-width="12" fill="none"/>
+          <path d="M 250 64 C 165 124, 165 376, 250 436 C 335 376, 335 124, 250 64 Z" stroke="#000000" stroke-width="12" fill="none"/>
+          <path d="M 80 250 C 136 182, 364 182, 420 250 C 364 318, 136 318, 80 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
+          <path d="M 250 80 C 182 136, 182 364, 250 420 C 318 364, 318 136, 250 80 Z" stroke="url(#sbVertRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
+          <rect x="200" y="200" width="100" height="100" rx="10" stroke="#000000" stroke-width="16" fill="none"/>
+          <rect x="202" y="202" width="96" height="96" rx="8" stroke="url(#sbHorizRibbon)" stroke-width="8" fill="none"/>
+          <g transform="translate(250, 250) rotate(45)">
+            <rect x="-44" y="-44" width="88" height="88" rx="12" fill="#000000" stroke="#000000" stroke-width="6"/>
+            <rect x="-40" y="-40" width="80" height="80" rx="10" fill="url(#sbDiamond)" stroke="#38bdf8" stroke-width="3"/>
+            <polygon points="-40,-40 40,-40 0,0" fill="#60a5fa" opacity="0.5"/>
+            <polygon points="40,-40 40,40 0,0" fill="#3b82f6" opacity="0.3"/>
+            <circle cx="0" cy="0" r="10" fill="#ffffff"/>
+          </g>
+          <circle cx="250" cy="40" r="15" fill="#000000"/>
+          <circle cx="250" cy="40" r="10" fill="url(#sbTopCyan)"/>
+          <circle cx="250" cy="40" r="4.5" fill="#ffffff"/>
+          <circle cx="250" cy="460" r="15" fill="#000000"/>
+          <circle cx="250" cy="460" r="10" fill="url(#sbBottomPink)"/>
+          <circle cx="250" cy="460" r="4.5" fill="#ffffff"/>
+          <circle cx="40" cy="250" r="15" fill="#000000"/>
+          <circle cx="40" cy="250" r="10" fill="url(#sbTopCyan)"/>
+          <circle cx="40" cy="250" r="4.5" fill="#ffffff"/>
+          <circle cx="460" cy="250" r="15" fill="#000000"/>
+          <circle cx="460" cy="250" r="10" fill="url(#sbBottomPink)"/>
+          <circle cx="460" cy="250" r="4.5" fill="#ffffff"/>
+        </svg>
         <span class="sb-title">Vektra</span>
       </div>
       <button class="sb-search-btn" onclick="alert('Search conversations')" title="Search">
@@ -380,6 +482,9 @@
       </button>
     </header>
 
+    <!-- Sticky Pinned Messages Bar at Top -->
+    <div id="pinnedBarWrap" class="pinned-bar-wrap" style="display:none;"></div>
+
     <!-- Message Scroller Area -->
     <div class="chat-scroll" id="chatScroller">
       <div class="chat-flow" id="chatFlow">
@@ -437,6 +542,66 @@
 
 <script>
   const API_ENDPOINT = 'https://vektrastudio-bot.onrender.com';
+  const VEKTRA_SVG_MARK = `<svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="rlTopCyan" x1="0%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stop-color="#38e1ff"/>
+        <stop offset="60%" stop-color="#00b4d8"/>
+        <stop offset="100%" stop-color="#2563eb"/>
+      </linearGradient>
+      <linearGradient id="rlBottomPink" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stop-color="#6366f1"/>
+        <stop offset="60%" stop-color="#a855f7"/>
+        <stop offset="100%" stop-color="#f43f5e"/>
+      </linearGradient>
+      <linearGradient id="rlHorizRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
+        <stop offset="0%" stop-color="#00f2fe"/>
+        <stop offset="35%" stop-color="#38bdf8"/>
+        <stop offset="65%" stop-color="#6366f1"/>
+        <stop offset="100%" stop-color="#c084fc"/>
+      </linearGradient>
+      <linearGradient id="rlVertRibbon" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stop-color="#38e1ff"/>
+        <stop offset="30%" stop-color="#2563eb"/>
+        <stop offset="70%" stop-color="#8b5cf6"/>
+        <stop offset="100%" stop-color="#ec4899"/>
+      </linearGradient>
+      <linearGradient id="rlDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#60a5fa"/>
+        <stop offset="50%" stop-color="#2563eb"/>
+        <stop offset="100%" stop-color="#4338ca"/>
+      </linearGradient>
+    </defs>
+    <path d="M 28 250 C 100 135, 400 135, 472 250 C 400 365, 100 365, 28 250 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+    <path d="M 250 28 C 135 100, 135 400, 250 472 C 365 400, 365 100, 250 28 Z" stroke="#000000" stroke-width="36" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+    <path d="M 34 250 C 104 140, 396 140, 466 250 C 396 360, 104 360, 34 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+    <path d="M 250 34 C 140 104, 140 396, 250 466 C 360 396, 360 104, 250 34 Z" stroke="url(#sbVertRibbon)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+    <path d="M 64 250 C 124 165, 376 165, 436 250 C 376 335, 124 335, 64 250 Z" stroke="#000000" stroke-width="12" fill="none"/>
+    <path d="M 250 64 C 165 124, 165 376, 250 436 C 335 376, 335 124, 250 64 Z" stroke="#000000" stroke-width="12" fill="none"/>
+    <path d="M 80 250 C 136 182, 364 182, 420 250 C 364 318, 136 318, 80 250 Z" stroke="url(#sbHorizRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
+    <path d="M 250 80 C 182 136, 182 364, 250 420 C 318 364, 318 136, 250 80 Z" stroke="url(#sbVertRibbon)" stroke-width="6" opacity="0.95" fill="none"/>
+    <rect x="200" y="200" width="100" height="100" rx="10" stroke="#000000" stroke-width="16" fill="none"/>
+    <rect x="202" y="202" width="96" height="96" rx="8" stroke="url(#sbHorizRibbon)" stroke-width="8" fill="none"/>
+    <g transform="translate(250, 250) rotate(45)">
+      <rect x="-44" y="-44" width="88" height="88" rx="12" fill="#000000" stroke="#000000" stroke-width="6"/>
+      <rect x="-40" y="-40" width="80" height="80" rx="10" fill="url(#sbDiamond)" stroke="#38bdf8" stroke-width="3"/>
+      <polygon points="-40,-40 40,-40 0,0" fill="#60a5fa" opacity="0.5"/>
+      <polygon points="40,-40 40,40 0,0" fill="#3b82f6" opacity="0.3"/>
+      <circle cx="0" cy="0" r="10" fill="#ffffff"/>
+    </g>
+    <circle cx="250" cy="40" r="15" fill="#000000"/>
+    <circle cx="250" cy="40" r="10" fill="url(#rlTopCyan)"/>
+    <circle cx="250" cy="40" r="4.5" fill="#ffffff"/>
+    <circle cx="250" cy="460" r="15" fill="#000000"/>
+    <circle cx="250" cy="460" r="10" fill="url(#rlBottomPink)"/>
+    <circle cx="250" cy="460" r="4.5" fill="#ffffff"/>
+    <circle cx="40" cy="250" r="15" fill="#000000"/>
+    <circle cx="40" cy="250" r="10" fill="url(#rlTopCyan)"/>
+    <circle cx="40" cy="250" r="4.5" fill="#ffffff"/>
+    <circle cx="460" cy="250" r="15" fill="#000000"/>
+    <circle cx="460" cy="250" r="10" fill="url(#rlBottomPink)"/>
+    <circle cx="460" cy="250" r="4.5" fill="#ffffff"/>
+  </svg>`;
   const chatInput = document.getElementById('chatInput');
   const dockInner = document.getElementById('dockInner');
   const sendBtn = document.getElementById('sendBtn');
@@ -498,10 +663,108 @@
   function openVoiceMode() { document.getElementById('voiceOverlay').classList.add('active'); }
   function closeVoiceMode() { document.getElementById('voiceOverlay').classList.remove('active'); }
 
+  let pinnedMessagesList = [];
+  let isPinnedDrawerOpen = false;
+
   function startNewChat() {
     messagesList.innerHTML = '';
+    pinnedMessagesList = [];
+    renderPinnedBar();
     document.getElementById('welcomeStarters').style.display = 'flex';
     closeSidebar();
+  }
+
+  function togglePin(id, text, role, timeStr, btn) {
+    const existingIdx = pinnedMessagesList.findIndex(p => p.id === id);
+    if (existingIdx >= 0) {
+      pinnedMessagesList.splice(existingIdx, 1);
+      if (btn) btn.classList.remove('pinned');
+      const targetBtn = document.getElementById('pin_' + id);
+      if (targetBtn) targetBtn.classList.remove('pinned');
+      showToast('Message unpinned');
+    } else {
+      pinnedMessagesList.push({ id, text, role, timeStr });
+      if (btn) btn.classList.add('pinned');
+      const targetBtn = document.getElementById('pin_' + id);
+      if (targetBtn) targetBtn.classList.add('pinned');
+      showToast('Message pinned to top 📌');
+    }
+    renderPinnedBar();
+  }
+
+  function renderPinnedBar() {
+    const wrap = document.getElementById('pinnedBarWrap');
+    if (!wrap) return;
+    if (pinnedMessagesList.length === 0) {
+      wrap.style.display = 'none';
+      wrap.innerHTML = '';
+      return;
+    }
+    wrap.style.display = 'flex';
+    const latest = pinnedMessagesList[pinnedMessagesList.length - 1];
+    const previewText = escapeHtml(latest.text.slice(0, 50)) + (latest.text.length > 50 ? '...' : '');
+
+    let drawerHtml = '';
+    if (isPinnedDrawerOpen) {
+      drawerHtml = `
+        <div class="pinned-list-drawer">
+          ${pinnedMessagesList.map(p => `
+            <div class="pinned-card" onclick="jumpToMessage('${p.id}')">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:10px;font-weight:700;text-transform:uppercase;color:${p.role==='user'?'#818cf8':'#38bdf8'}">
+                  <span>${p.role === 'user' ? 'You' : 'Vektra'}</span>
+                  <span style="color:var(--text-muted)">•</span>
+                  <span style="color:var(--text-muted)">${p.timeStr || ''}</span>
+                </div>
+                <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4;">${escapeHtml(p.text)}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;margin-left:8px;" onclick="event.stopPropagation()">
+                <button class="pinned-jump-btn" onclick="jumpToMessage('${p.id}')">Jump</button>
+                <button class="action-btn" onclick="togglePin('${p.id}')" title="Unpin" style="color:#f43f5e;padding:2px 4px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    wrap.innerHTML = `
+      <div class="pinned-box">
+        <div class="pinned-header">
+          <button class="pinned-badge-chip" onclick="togglePinnedDrawer()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+            <span>Pinned</span>
+            <span class="pinned-count-tag">${pinnedMessagesList.length}</span>
+            ${!isPinnedDrawerOpen ? `<span style="font-weight:400;font-size:12px;color:var(--text-muted);margin-left:4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">— ${previewText}</span>` : ''}
+          </button>
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${!isPinnedDrawerOpen ? `<button class="pinned-jump-btn" onclick="jumpToMessage('${latest.id}')">Jump</button>` : ''}
+            <button class="action-btn" onclick="togglePinnedDrawer()" title="${isPinnedDrawerOpen ? 'Collapse' : 'Expand'}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="${isPinnedDrawerOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}"/></svg>
+            </button>
+          </div>
+        </div>
+        ${drawerHtml}
+      </div>
+    `;
+  }
+
+  function togglePinnedDrawer() {
+    isPinnedDrawerOpen = !isPinnedDrawerOpen;
+    renderPinnedBar();
+  }
+
+  function jumpToMessage(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.outline = '2px solid #38bdf8';
+      el.style.borderRadius = '14px';
+      el.style.transition = 'outline 0.3s ease';
+      setTimeout(() => { el.style.outline = 'none'; }, 1800);
+    }
   }
 
   function addHistoryItem(title) {
@@ -635,13 +898,20 @@
     document.getElementById('welcomeStarters').style.display = 'none';
 
     const safeUserText = encodeURIComponent(text);
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const userMsgId = 'usr_' + Date.now();
 
-    // User Message Row with Copy and Share
+    // User Message Row with Copy, Share, Pin
     const userRow = document.createElement('div');
+    userRow.id = userMsgId;
     userRow.className = 'msg-row user';
     userRow.innerHTML = `
       <div class="user-bubble">${escapeHtml(text)}</div>
       <div class="msg-actions user-actions">
+        <span class="msg-timestamp">${timeStr}</span>
+        <button class="action-btn" id="pin_${userMsgId}" onclick="togglePin('${userMsgId}', decodeURIComponent('${safeUserText}'), 'user', '${timeStr}', this)" title="Pin message">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+        </button>
         <button class="action-btn" onclick="copyText(decodeURIComponent('${safeUserText}'), this)" title="Copy message">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
@@ -655,10 +925,11 @@
     // Bot Response Container with Rolling Logo & Dynamic Status
     const botMsgId = 'msg_' + Date.now();
     const botRow = document.createElement('div');
+    botRow.id = botMsgId;
     botRow.className = 'msg-row bot';
     botRow.innerHTML = `
       <div class="thinking-row" id="thinking_${botMsgId}">
-        <img src="/vektra-logo.svg" class="rolling-logo" alt="Thinking"/>
+        <div class="rolling-logo">${VEKTRA_SVG_MARK}</div>
         <span class="thinking-text" id="status_${botMsgId}">Searching knowledge base...</span>
       </div>
       <div class="bot-content" id="content_${botMsgId}"></div>
@@ -759,8 +1030,13 @@
 
           // Render Action Buttons below bot response
           if (actionsRow) {
+            const botTimeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             const safeText = encodeURIComponent(fullText);
             actionsRow.innerHTML = `
+              <span class="msg-timestamp">${botTimeStr}</span>
+              <button class="action-btn" id="pin_${botMsgId}" onclick="togglePin('${botMsgId}', decodeURIComponent('${safeText}'), 'bot', '${botTimeStr}', this)" title="Pin message">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+              </button>
               <button class="action-btn" onclick="copyText(decodeURIComponent('${safeText}'), this)" title="Copy response">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
