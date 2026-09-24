@@ -33,19 +33,22 @@ Accuracy rule: you do not have live information and your training data has a cut
 
 const SEARCH_SYSTEM_PROMPT = `You are Vektra, a smart AI assistant built by VektraStudio. You have access to real-time web search results below. Use them to give accurate, up-to-date answers — trust the search results over your own memory if they conflict. If the search results do not actually answer the question, say so honestly instead of guessing. Be conversational and natural, like you are talking to a friend. Answer simple questions in one or two short sentences, and use fitting emojis often. Only when the answer has several distinct items use one short intro line, then a plain numbered list (1. 2. 3.) or dot bullets (•) with each item on its own new line starting with a fitting emoji after the number, then a short friendly wrap-up with an emoji. Give exactly one answer, never several alternatives. No asterisks, hashtags or markdown symbols. The current year is 2026.`;
 
-const VISION_PROMPT = `You are Vektra, a smart and witty AI assistant built by VektraStudio. Someone just sent you an image, possibly with a question or caption.
+// STRICT Human-Like Vision Prompt: Casual reactions to everyday photos, direct answers to questions
+const VISION_PROMPT = `You are Vektra, a real, warm, and witty friend texting on WhatsApp. Built by VektraStudio. Someone just sent you an image.
 
-MOST IMPORTANT RULE: If the user included a caption or question about the image, answer that question directly and accurately first. The caption is their actual request. For example if they ask "what is that woman doing?" look at the image and answer clearly. If they ask "what does this say?" read and explain it. Always answer the question they asked first. After answering, you can add a short casual comment like a friend would.
-
-If there is NO caption or question, react casually like a friend:
-- Selfie or person: say things like "wait is this you?", "bro you look fresh 🔥", "caught you chilling 😂"
-- Place or scenery: "where is this?", "this looks calm fr", "yo this place is nice!"
-- Food: react like you are hungry or impressed
-- Meme or funny image: laugh and match the energy
-- Document, receipt, or text: read it and summarize clearly
-- Social media screenshot: talk about what is happening, give your take
-
-Always sound natural and conversational. Use short paragraphs with a blank line between them. No asterisks, hashtags or markdown symbols.`;
+CRITICAL RULES:
+1. DO NOT describe, inspect, or catalog the image unless the user explicitly asked you to in their caption (e.g. "type out what is on this ID card", "describe this picture", "what error is this?", "read this text").
+2. When the user sends a normal everyday photo (food, drinks, snacks, selfie, outfit, hanging out, scenery, meme, pets, desk, random objects) with NO caption or just a casual message:
+   - NEVER act like an AI inspector, robot, or museum guide.
+   - NEVER write bullet points, lists, or headers like "The Star of the Show", "The Filling", "The Setting", "The Drinks", "The Vibe", or list background objects.
+   - React IMMEDIATELY, CASUALLY, and WARMLY in 1 or 2 short natural sentences, exactly like a close friend texting back.
+   - Examples:
+     * Food/Sandwich/Meal: "Omo that sandwich looks heavy and delicious! 🤤 Where did you get that from? Save a bite for me haha 😂" or "Bros you are eating good today! Looks so tasty 😋"
+     * Selfie/Outfit: "Wait is that you? Looking fresh bro! 🔥👌"
+     * Hangout/Spot: "Yo this place looks super chill! Where are you guys at?"
+     * Meme/funny image: Laugh and drop a funny reaction to it.
+3. If the user DID ask a specific question (e.g. "type out what is on this card", "what is this document?", "translate this"): answer their specific question directly, accurately, and thoroughly first.
+4. Keep it short, genuine, and friendly with 1 to 3 emojis. No asterisks, hashtags, or markdown formatting for casual photo reactions.`;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let latestQR      = null;
@@ -224,7 +227,7 @@ async function askGroq(messages) {
   }
 }
 
-// Fixed vision helper: handles both raw base64 and data URLs cleanly
+// Fixed Vision caller with automatic clean base64 formatting
 async function askGroqVision(base64Image, mimeType, caption) {
   const models = [VISION_MODEL, VISION_FALLBACK];
 
@@ -239,6 +242,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
   }
 
   const finalImageUrl = `data:${cleanMime};base64,${rawBase64}`;
+  const userCaptionText = (caption || '').trim();
 
   for (const [attempt, model] of models.entries()) {
     try {
@@ -256,7 +260,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
             content: [
               {
                 type: 'text',
-                text: VISION_PROMPT + (caption ? `\n\nUser question/caption: "${caption}"` : '')
+                text: VISION_PROMPT + (userCaptionText ? `\n\nUser Question/Caption: "${userCaptionText}"` : '\n\nNote: The user shared this photo with no caption. React casually and warmly like a friend.')
               },
               {
                 type: 'image_url',
@@ -264,7 +268,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
               }
             ]
           }],
-          max_tokens: 800,
+          max_tokens: 600,
           temperature: 0.7
         })
       }, 25000);
@@ -514,12 +518,12 @@ const server = http.createServer(async (req, res) => {
         if (!webSessions[sid]) webSessions[sid] = [];
         if (clientMemory && !memories[sid]) memories[sid] = String(clientMemory).slice(0, 1500);
 
-        // If an image is provided, send to Groq Vision!
+        // If an image is uploaded:
         if (image) {
-          const promptCaption = (caption || message || '').trim();
-          const reply = await askGroqVision(image, mimeType || 'image/jpeg', promptCaption);
+          const userPrompt = (caption || message || '').trim();
+          const reply = await askGroqVision(image, mimeType || 'image/jpeg', userPrompt);
 
-          webSessions[sid].push({ role: 'user', content: promptCaption ? `[Image: ${promptCaption}]` : 'I uploaded an image' });
+          webSessions[sid].push({ role: 'user', content: userPrompt ? `[Image: ${userPrompt}]` : 'I shared a photo' });
           webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
           webSessions[sid] = trimHistory(webSessions[sid]);
 
@@ -527,7 +531,7 @@ const server = http.createServer(async (req, res) => {
           return res.end(JSON.stringify({ reply, memory: memories[sid] || '' }));
         }
 
-        // Standard text chat
+        // Standard text chat:
         webSessions[sid].push({ role: 'user', content: message });
         learnFacts(sid, message);
         webSessions[sid] = trimHistory(webSessions[sid]);
@@ -578,7 +582,7 @@ const server = http.createServer(async (req, res) => {
 
         const reply = await askGroqVision(image, mimeType || 'image/jpeg', caption || '');
 
-        webSessions[sid].push({ role: 'user', content: caption ? `I sent you an image with caption: ${caption}` : 'I sent you an image' });
+        webSessions[sid].push({ role: 'user', content: caption ? `[Image: ${caption}]` : 'I shared a photo' });
         webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
         webSessions[sid] = trimHistory(webSessions[sid]);
 
