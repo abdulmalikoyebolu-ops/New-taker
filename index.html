@@ -150,6 +150,79 @@
     .pwa-install-top-btn:hover { background: rgba(37, 99, 235, 0.25); transform: translateY(-1px); }
     .pwa-install-top-btn:active { transform: scale(0.95); }
 
+    .code-download-top-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.25));
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #34d399; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    body.light .code-download-top-btn {
+      background: #ecfdf5; border-color: #a7f3d0; color: #059669;
+    }
+    .code-download-top-btn:hover { background: rgba(16, 185, 129, 0.3); transform: translateY(-1px); }
+    .code-download-top-btn:active { transform: scale(0.95); }
+
+    /* Source Code Modal */
+    .code-hub-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;
+    }
+    .code-hub-backdrop.active { display: flex; }
+    .code-hub-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 22px;
+      display: flex; flex-direction: column; box-shadow: 0 24px 50px rgba(0,0,0,0.6);
+    }
+    body.light .code-hub-card { background: #ffffff; box-shadow: 0 12px 30px rgba(0,0,0,0.15); }
+    .code-hub-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .code-pill {
+      font-size: 10.5px; font-weight: 800; background: rgba(16, 185, 129, 0.18); color: #34d399;
+      padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .code-action-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+    }
+    @media (max-width: 540px) { .code-action-grid { grid-template-columns: 1fr; } }
+    .code-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+    }
+    .code-box-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .code-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: inherit;
+      transition: all .15s;
+    }
+    .code-btn:hover { background: var(--surface-h); }
+    .code-btn.primary {
+      background: #2563eb; border-color: #2563eb; color: #ffffff;
+    }
+    .code-btn.primary:hover { background: #1d4ed8; }
+    .download-all-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff; font-size: 14.5px; font-weight: 700; border: none; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(16,185,129,0.3); transition: all .15s;
+    }
+    .download-all-btn:hover { background: linear-gradient(135deg, #059669, #047857); transform: translateY(-1px); }
+    .code-tab-btn {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+    }
+    .code-tab-btn.active {
+      background: var(--surface-h); border-color: var(--accent); color: var(--text);
+    }
+    .code-copy-full-btn {
+      background: rgba(37,99,235,0.12); border: 1px solid rgba(37,99,235,0.3); border-radius: 8px;
+      color: #60a5fa; font-size: 12px; font-weight: 600; padding: 5px 12px; cursor: pointer;
+    }
+    .code-copy-full-btn:hover { background: rgba(37,99,235,0.22); }
+    .code-preview-wrap {
+      max-height: 240px; overflow: auto; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+      color: var(--text); line-height: 1.5; white-space: pre;
+    }
+
     .pwa-guide-modal {
       display: none; position: fixed; inset: 0; z-index: 9999;
       background: rgba(0,0,0,0.65); backdrop-filter: blur(5px);
@@ -439,25 +512,63 @@
       50% { transform: scale(1.08); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
     }
 
-    /* ─── INVOICE CHAT CARD & MODAL ─── */
+    /* ─── INVOICE CHAT CARD & TEMPLATES ─── */
     .invoice-chat-card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-      padding: 16px; margin: 12px 0; max-width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      padding: 18px; margin: 14px 0; max-width: 100%; box-shadow: 0 4px 22px rgba(0,0,0,0.3);
+      position: relative; transition: all .25s ease;
     }
     body.light .invoice-chat-card {
       background: #ffffff; border-color: #e2e8f0; box-shadow: 0 4px 18px rgba(0,0,0,0.06);
     }
+    /* Template Specific Themes */
+    .invoice-chat-card.tpl-royal-violet {
+      border-top: 4px solid #5b45b0;
+    }
+    .invoice-chat-card.tpl-corporate-cyan {
+      border-top: 4px solid #00a8e8;
+    }
+    .invoice-chat-card.tpl-executive-onyx {
+      border-top: 4px solid #111827;
+    }
+    .invoice-chat-card.tpl-modern-emerald {
+      border-top: 4px solid #059669;
+    }
+
     .inv-card-header {
       display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
-      padding-bottom: 12px; margin-bottom: 12px;
+      padding-bottom: 12px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+    }
+    .inv-brand-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .inv-logo-img {
+      max-height: 38px; max-width: 110px; object-fit: contain; border-radius: 6px;
+      background: rgba(255,255,255,0.06); padding: 2px;
     }
     .inv-pill {
-      font-size: 11px; font-weight: 800; background: rgba(37,99,235,0.15); color: #38bdf8;
+      font-size: 10.5px; font-weight: 800; background: rgba(37,99,235,0.15); color: #38bdf8;
       padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em; text-transform: uppercase;
     }
+    .tpl-royal-violet .inv-pill { background: rgba(91,69,176,0.18); color: #a78bfa; }
+    .tpl-corporate-cyan .inv-pill { background: rgba(0,168,232,0.18); color: #38bdf8; }
+    .tpl-modern-emerald .inv-pill { background: rgba(5,150,105,0.18); color: #34d399; }
+    .tpl-executive-onyx .inv-pill { background: rgba(255,255,255,0.1); color: #e2e8f0; }
+
+    .inv-design-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; background: var(--surface-h); color: var(--text-muted);
+      cursor: pointer; transition: all .15s; border: 1px solid var(--border);
+    }
+    .inv-design-badge:hover { color: var(--text); border-color: var(--accent); }
+
     .inv-total-pill {
       font-size: 16px; font-weight: 800; color: #10b981;
     }
+    .tpl-royal-violet .inv-total-pill { color: #a78bfa; }
+    .tpl-corporate-cyan .inv-total-pill { color: #38bdf8; }
+    .tpl-modern-emerald .inv-total-pill { color: #10b981; }
+
     .inv-card-meta {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 12px;
     }
@@ -469,13 +580,21 @@
       width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;
     }
     .inv-table th {
-      background: var(--surface-h); padding: 8px 10px; font-weight: 600; color: var(--text-muted);
+      background: var(--surface-h); padding: 9px 10px; font-weight: 600; color: var(--text-muted); font-size: 12px;
     }
+    .tpl-royal-violet .inv-table th { background: rgba(91,69,176,0.15); color: #c4b5fd; }
+    .tpl-corporate-cyan .inv-table th { background: rgba(0,168,232,0.15); color: #7dd3fc; }
+    .tpl-modern-emerald .inv-table th { background: rgba(5,150,105,0.15); color: #6ee7b7; }
+
     .inv-table td {
       padding: 8px 10px; border-top: 1px solid var(--border); color: var(--text);
     }
+    .inv-summary-row {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; gap: 12px;
+      font-size: 12.5px; color: var(--text-muted);
+    }
     .inv-actions-toolbar {
-      display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); margin-top: 12px;
     }
     .inv-btn {
       display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
@@ -492,6 +611,10 @@
     .inv-btn.print:hover { background: var(--border); }
     .inv-btn.edit { background: rgba(56,189,248,0.15); color: #38bdf8; }
     .inv-btn.edit:hover { background: rgba(56,189,248,0.25); }
+    .inv-btn.style-btn { background: rgba(139,92,246,0.16); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+    .inv-btn.style-btn:hover { background: rgba(139,92,246,0.28); color: #ffffff; transform: translateY(-1px); }
+    .inv-btn.logo-btn { background: var(--surface-h); color: var(--text); border: 1px dashed var(--border); }
+    .inv-btn.logo-btn:hover { border-color: var(--accent); color: #38bdf8; }
 
     /* Modal */
     .inv-modal-backdrop {
@@ -542,7 +665,7 @@
     }
     @keyframes orbPulse { 0%, 100% { transform: scale(1); filter: blur(0px); } 50% { transform: scale(1.15); filter: blur(1px); } }
   </style>
-</head>
+<script src="/_aistudio-iframe.js?v=2c34bde1"></script></head>
 <body>
 
 <!-- Master Global Permanent SVG Gradients (Ensures Vektra neon logo NEVER turns black & white across conversations) -->
@@ -683,7 +806,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Install App</span>
       </button>
-      <button class="sb-nav-item" onclick="downloadProjectCode(); closeSidebar();">
+      <button class="sb-nav-item" onclick="openCodeModal(); closeSidebar();">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         <span>Download Code</span>
       </button>
@@ -721,6 +844,10 @@
         </button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
+        <button id="topDownloadCodeBtn" class="code-download-top-btn" onclick="openCodeModal()" title="Download Source Code">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Code</span>
+        </button>
         <button id="pwaInstallTopBtn" class="pwa-install-top-btn" onclick="triggerPWAInstall()" title="Install Vektra App">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span>Install App</span>
@@ -813,6 +940,30 @@
 
     <div class="inv-form-grid">
       <div class="inv-field">
+        <label>Design Template</label>
+        <select id="invTemplateSelect" onchange="previewTemplateSelection(this.value)">
+          <option value="royal-violet">🟣 Royal Violet (Ref Image 1)</option>
+          <option value="corporate-cyan">🔷 Corporate Cyan & Slate (Ref Image 2)</option>
+          <option value="executive-onyx">⚫ Executive Onyx (Monochrome)</option>
+          <option value="modern-emerald">🟢 Modern Emerald (Fintech)</option>
+        </select>
+      </div>
+      <div class="inv-field">
+        <label>Brand Logo (Optional)</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="file" id="modalLogoFile" accept="image/*" style="display:none;" onchange="handleModalLogoUpload(event)"/>
+          <button type="button" class="inv-btn logo-btn" onclick="document.getElementById('modalLogoFile').click()" style="flex:1;">
+            🖼️ Upload Logo
+          </button>
+          <button type="button" id="modalRemoveLogoBtn" class="inv-btn" style="display:none;background:#ef4444;color:#fff;padding:7px 10px;" onclick="removeModalLogo()" title="Remove logo">
+            ✕
+          </button>
+        </div>
+        <div id="modalLogoPreviewWrap" style="display:none;margin-top:4px;">
+          <img id="modalLogoPreview" style="max-height:32px;max-width:120px;object-fit:contain;border-radius:4px;border:1px solid var(--border);" src=""/>
+        </div>
+      </div>
+      <div class="inv-field">
         <label>Invoice Number</label>
         <input type="text" id="invNum" value="INV-2026-001"/>
       </div>
@@ -842,6 +993,14 @@
       <div class="inv-field">
         <label>Bill To (Client name / business)</label>
         <input type="text" id="invBillTo" placeholder="Client Name or Company"/>
+      </div>
+      <div class="inv-field">
+        <label>Office Address & Phone</label>
+        <input type="text" id="invFromAddress" placeholder="123 Tech Blvd, Suite 400 · (+1) 555-0199"/>
+      </div>
+      <div class="inv-field">
+        <label>Client Address / Contact</label>
+        <input type="text" id="invBillToAddress" placeholder="Client Address, Email, Phone"/>
       </div>
     </div>
 
@@ -908,6 +1067,446 @@
     <button onclick="closeIosGuide()" style="width:100%;padding:10px;border-radius:10px;background:var(--accent);color:#fff;border:none;font-weight:600;font-size:14px;cursor:pointer;">Got it</button>
   </div>
 </div>
+
+<!-- ── SOURCE CODE DOWNLOAD & VIEWER MODAL ── -->
+<div class="code-hub-backdrop" id="codeHubModal" onclick="if(event.target===this)closeCodeModal()">
+  <div class="code-hub-card">
+    <div class="code-hub-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="code-pill">SOURCE CODE</span>
+        <h3 style="font-size:18px;font-weight:700;margin:0;color:var(--text);">Download Project Code</h3>
+      </div>
+      <button onclick="closeCodeModal()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--text-muted);margin:0 0 16px;line-height:1.5;">
+      Get both full application files (Frontend UI with Multi-Template Invoice Engine & Backend Server). Instant download generated directly in your browser with 100% reliability.
+    </p>
+
+    <!-- Quick Download Action Buttons -->
+    <div class="code-action-grid">
+      <div class="code-box">
+        <div class="code-box-header">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--text);">index.html</div>
+            <div style="font-size:12px;color:var(--text-muted);">Frontend, Invoices & Styling</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:rgba(239,68,68,0.15);color:#f87171;">HTML</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="code-btn primary" onclick="downloadFileInstant('html')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+          <button class="code-btn" onclick="copyFileContent('html', this)">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="code-box">
+        <div class="code-box-header">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--text);">index.js</div>
+            <div style="font-size:12px;color:var(--text-muted);">Node.js Server, Groq & Vision</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:rgba(234,179,8,0.15);color:#facc15;">JS</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="code-btn primary" onclick="downloadFileInstant('js')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+          <button class="code-btn" onclick="copyFileContent('js', this)">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="download-all-btn" onclick="downloadFileInstant('both')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Both Files (index.html & index.js)
+    </button>
+
+    <!-- Code Preview Tabs -->
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;gap:8px;">
+          <button id="tabHtmlBtn" class="code-tab-btn active" onclick="switchCodeTab('html')">index.html (Frontend)</button>
+          <button id="tabJsBtn" class="code-tab-btn" onclick="switchCodeTab('js')">index.js (Backend)</button>
+        </div>
+        <button id="activeCopyBtn" class="code-copy-full-btn" onclick="copyActiveTabCode()">
+          📋 Copy Entire Code
+        </button>
+      </div>
+      <div class="code-preview-wrap">
+        <pre><code id="codePreviewContent">Loading code...</code></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Embedded Server Code for Zero-Network Download Reliability -->
+<script id="embeddedIndexJs" type="text/plain">
+require('dotenv').config();
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const GROQ_API_KEY     = process.env.GROQ_API_KEY;
+const TAVILY_API_KEY   = process.env.TAVILY_API_KEY;
+const GOOGLE_API_KEY   = process.env.GOOGLE_API_KEY;
+const GOOGLE_CSE_ID    = process.env.GOOGLE_CSE_ID;
+const PORT             = process.env.PORT || 3000;
+const MAX_HISTORY      = 60;
+
+const CHAT_MODEL       = process.env.CHAT_MODEL || 'openai/gpt-oss-20b';
+const VISION_MODEL     = process.env.VISION_MODEL || 'qwen/qwen3.8-27b';
+const VISION_FALLBACK  = 'meta-llama/llama-3.2-11b-vision-instruct';
+
+// ─── Prompts ──────────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners.
+
+You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You love emojis: add fitting emojis often so your replies feel lively, warm and fun, usually two or three per reply, placed naturally.
+
+Invoice & Document Generation:
+When the user asks you to create, generate, prepare, or send an invoice, bill, estimate, or receipt, write a warm, friendly introductory note and then output the complete invoice data inside a code block tagged as invoice, like this:
+\`\`\`invoice
+{
+  "invoiceNumber": "INV-2026-001",
+  "date": "2026-09-24",
+  "dueDate": "2026-10-08",
+  "from": "VektraStudio",
+  "billTo": "Client or Company Name",
+  "currency": "$",
+  "items": [
+    { "description": "Web Design & Development", "quantity": 1, "rate": 750 },
+    { "description": "Hosting & Maintenance", "quantity": 1, "rate": 150 }
+  ],
+  "tax": 0,
+  "discount": 0,
+  "notes": "Payment due within 14 days. Thank you for your business!"
+}
+\`\`\`
+The web application automatically renders this as an interactive Invoice Card with one-click PDF, Excel, Word (.doc), and native Mobile Sharing downloads.
+
+Formatting Guidelines:
+For greetings, small talk, opinions and simple questions, reply the way a friend would text: one to three short natural sentences with a couple of fitting emojis, and never a list. Give exactly one answer.
+Only when the user asks for information that truly has several separate parts (steps, a comparison, a set of items, an explanation with distinct points) use this structure: one short intro line, a blank line, then a plain numbered list (1. 2. 3.) with each item on its own new line as a fitting emoji, a short title, a dash, and a one or two sentence explanation.
+Never use markdown hashtags or asterisks excessively. You always reply in English.
+You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished.
+
+If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
+
+Accuracy rule: you do not have live information and your training data has a cutoff. If a question depends on live facts and you are not fully certain, say so plainly. Never guess or invent personal details about the user.`;
+
+const VISION_PROMPT = `You are Vektra, a smart, witty and relatable AI companion built by VektraStudio. Someone just shared an image with you.
+
+CRITICAL INSTRUCTION:
+1. If the user asked a specific question or provided a caption about the image (e.g. "what does this say?", "solve this", "what is this object?"), answer their question directly, thoroughly, and accurately FIRST.
+2. If there is NO question or caption (they just sent a photo), DO NOT give an emotionless robotic description of the image! Instead, react like a real human friend:
+- Selfie or portrait: react warmly ("Looking sharp! 🔥", "Love the vibe here!")
+- Landscape or city: comment on the atmosphere ("This view looks so peaceful, where was this taken?")
+- Food / Drinks: react with appetite or curiosity ("Now I'm hungry 🤤 looks incredible!")
+- Meme or funny picture: laugh and match the humor
+- Documents / Receipts / Invoices: summarize key figures cleanly
+Always sound natural, conversational, and energetic with 2-3 fitting emojis.`;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let webSessions = {};
+const MEMORY_FILE = process.env.MEMORY_FILE || './memories.json';
+let memories = {};
+try { memories = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8')); } catch (e) { memories = {}; }
+
+function saveMemories() {
+  try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(memories, null, 2)); } catch (e) {}
+}
+
+// ─── Groq API Request ─────────────────────────────────────────────────────────
+async function askGroq(messages, model = CHAT_MODEL, opts = {}) {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is missing in environment variables.");
+  
+  const payload = {
+    model: model,
+    messages: messages,
+    temperature: opts.temperature ?? 0.7,
+    max_tokens: opts.max_tokens ?? 2048,
+    ...opts
+  };
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+// ─── Groq Whisper Audio Transcription ─────────────────────────────────────────
+async function transcribeAudio(audioBuffer, mimeType = 'audio/webm') {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
+
+  const formData = new FormData();
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const blob = new Blob([audioBuffer], { type: mimeType });
+  formData.append('file', blob, `voice.${ext}`);
+  formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('response_format', 'json');
+
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Whisper transcription error: ${err}`);
+  }
+
+  const result = await res.json();
+  return result.text || '';
+}
+
+// ─── Web Search (Tavily or Google CSE) ─────────────────────────────────────────
+async function searchWeb(query) {
+  if (TAVILY_API_KEY) {
+    try {
+      const res = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: TAVILY_API_KEY, query: query, max_results: 4 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.results || []).map(r => `• ${r.title}: ${r.content} (${r.url})`).join('\n\n');
+      }
+    } catch (e) {
+      console.warn('Tavily search failed:', e.message);
+    }
+  }
+
+  if (GOOGLE_API_KEY && GOOGLE_CSE_ID) {
+    try {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return (data.items || []).slice(0, 4).map(i => `• ${i.title}: ${i.snippet} (${i.link})`).join('\n\n');
+      }
+    } catch (e) {
+      console.warn('Google CSE search failed:', e.message);
+    }
+  }
+
+  return null;
+}
+
+// ─── HTTP Server & CORS ───────────────────────────────────────────────────────
+const server = http.createServer(async (req, res) => {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+
+  // Health check endpoint for monitoring
+  if (parsedUrl.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'Vektra AI Server', version: '2.4.0' }));
+    return;
+  }
+
+  // ─── Direct Code File Downloads (Attachment) ────────────────────────────────
+  if (req.method === 'GET' && (parsedUrl.pathname === '/download/index.html' || parsedUrl.pathname === '/download/html')) {
+    const filePath = path.join(__dirname, 'index.html');
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="index.html"'
+      });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+  }
+
+  if (req.method === 'GET' && (parsedUrl.pathname === '/download/index.js' || parsedUrl.pathname === '/download/js')) {
+    const filePath = path.join(__dirname, 'index.js');
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="index.js"'
+      });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+  }
+
+  // ─── Serve index.html and static files ──────────────────────────────────────
+  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/index.html')) {
+    const htmlPath = path.join(__dirname, 'index.html');
+    if (fs.existsSync(htmlPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      fs.createReadStream(htmlPath).pipe(res);
+      return;
+    }
+  }
+
+  // Serve static assets if present (e.g., manifest.json, sw.js, logo, etc.)
+  if (req.method === 'GET' && !parsedUrl.pathname.startsWith('/chat') && !parsedUrl.pathname.startsWith('/transcribe')) {
+    const cleanPath = path.normalize(parsedUrl.pathname).replace(/^(\.\.[\/\\])+/, '');
+    const possiblePaths = [
+      path.join(__dirname, cleanPath),
+      path.join(__dirname, 'public', cleanPath)
+    ];
+
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeTypes = {
+          '.html': 'text/html; charset=utf-8',
+          '.js': 'application/javascript; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.json': 'application/json',
+          '.svg': 'image/svg+xml',
+          '.png': 'image/png',
+          '.ico': 'image/x-icon',
+          '.txt': 'text/plain; charset=utf-8'
+        };
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+    }
+  }
+
+  // ─── POST /chat ─────────────────────────────────────────────────────────────
+  if (parsedUrl.pathname === '/chat' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const sessionId = payload.sessionId || 'default';
+        const userMessage = (payload.message || '').trim();
+        const image = payload.image;
+
+        if (!webSessions[sessionId]) {
+          webSessions[sessionId] = [];
+        }
+
+        const history = webSessions[sessionId];
+        let reply = '';
+
+        // Case 1: Image sent
+        if (image && image.base64) {
+          const mime = image.mimeType || 'image/jpeg';
+          const dataUrl = image.base64.startsWith('data:') ? image.base64 : `data:${mime};base64,${image.base64}`;
+
+          const visionMessages = [
+            { role: 'system', content: VISION_PROMPT },
+            ...history.slice(-6),
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: userMessage || 'Take a look at this image.' },
+                { type: 'image_url', image_url: { url: dataUrl } }
+              ]
+            }
+          ];
+
+          try {
+            reply = await askGroq(visionMessages, VISION_MODEL);
+          } catch (err) {
+            console.warn(`Vision model ${VISION_MODEL} failed, trying fallback:`, err.message);
+            reply = await askGroq(visionMessages, VISION_FALLBACK);
+          }
+        } 
+        // Case 2: Standard Text / Search
+        else {
+          const needsSearch = /\b(weather|stock|news|score|release date|today|yesterday|latest|price of|who is the current)\b/i.test(userMessage);
+          let searchContext = '';
+
+          if (needsSearch) {
+            const results = await searchWeb(userMessage);
+            if (results) {
+              searchContext = `\n\n[Live Real-Time Web Search Results]:\n${results}\n\nUse these fresh results to answer the user accurately.`;
+            }
+          }
+
+          const promptMessages = [
+            { role: 'system', content: SYSTEM_PROMPT + searchContext },
+            ...history.slice(-MAX_HISTORY),
+            { role: 'user', content: userMessage }
+          ];
+
+          reply = await askGroq(promptMessages, CHAT_MODEL);
+        }
+
+        // Save conversation turn
+        history.push({ role: 'user', content: userMessage || '[Sent an image]' });
+        history.push({ role: 'assistant', content: reply });
+        if (history.length > MAX_HISTORY * 2) {
+          webSessions[sessionId] = history.slice(-MAX_HISTORY * 2);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply: reply, sessionId: sessionId }));
+      } catch (err) {
+        console.error('Chat endpoint error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message || 'Internal server error' }));
+      }
+    });
+    return;
+  }
+
+  // ─── POST /transcribe (Audio Voice Notes) ───────────────────────────────────
+  if (parsedUrl.pathname === '/transcribe' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', chunk => { chunks.push(chunk); });
+    req.on('end', async () => {
+      try {
+        const buffer = Buffer.concat(chunks);
+        const mimeType = req.headers['content-type'] || 'audio/webm';
+        const transcript = await transcribeAudio(buffer, mimeType);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ text: transcript }));
+      } catch (err) {
+        console.error('Transcribe error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 404 for other routes
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Endpoint not found' }));
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Vektra AI Server running on port ${PORT}`);
+});
+</script>
 
 <!-- ── LIVE VOICE MODE OVERLAY ── -->
 <div class="voice-overlay" id="voiceOverlay">
@@ -1505,6 +2104,129 @@
     sbHistoryList.prepend(item);
   }
 
+  // ─── SOURCE CODE MODAL & IN-MEMORY DOWNLOADER ───
+  let currentCodeTab = 'html';
+
+  function getRawIndexJs() {
+    const el = document.getElementById('embeddedIndexJs');
+    return el ? el.textContent.trim() : '';
+  }
+
+  function getRawIndexHtml() {
+    return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  }
+
+  function openCodeModal() {
+    const modal = document.getElementById('codeHubModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    switchCodeTab(currentCodeTab);
+  }
+
+  function closeCodeModal() {
+    const modal = document.getElementById('codeHubModal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  function switchCodeTab(tab) {
+    currentCodeTab = tab;
+    const tabHtml = document.getElementById('tabHtmlBtn');
+    const tabJs = document.getElementById('tabJsBtn');
+    const preview = document.getElementById('codePreviewContent');
+
+    if (tabHtml && tabJs) {
+      if (tab === 'html') {
+        tabHtml.classList.add('active');
+        tabJs.classList.remove('active');
+      } else {
+        tabJs.classList.add('active');
+        tabHtml.classList.remove('active');
+      }
+    }
+
+    if (preview) {
+      if (tab === 'html') {
+        // Show first 200 lines preview for performance, copy button gets all
+        const fullHtml = getRawIndexHtml();
+        preview.textContent = fullHtml.slice(0, 15000) + '\n\n... [Full file contains ~3,500 lines. Click "Copy Entire Code" or "Download" for the complete code]';
+      } else {
+        preview.textContent = getRawIndexJs();
+      }
+    }
+  }
+
+  function copyActiveTabCode() {
+    const content = currentCodeTab === 'html' ? getRawIndexHtml() : getRawIndexJs();
+    const btn = document.getElementById('activeCopyBtn');
+    navigator.clipboard.writeText(content).then(() => {
+      showToast(`Copied entire ${currentCodeTab === 'html' ? 'index.html' : 'index.js'}! ✅`);
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✅ Copied to Clipboard!';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      }
+    }).catch(() => {
+      showToast('Could not copy automatically. Please select text manually.');
+    });
+  }
+
+  function copyFileContent(type, btn) {
+    const content = type === 'html' ? getRawIndexHtml() : getRawIndexJs();
+    navigator.clipboard.writeText(content).then(() => {
+      showToast(`Copied ${type === 'html' ? 'index.html' : 'index.js'}! ✅`);
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+      }
+    });
+  }
+
+  function saveFileBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function downloadFileInstant(fileType = 'both') {
+    if (fileType === 'html' || fileType === 'both') {
+      const htmlText = getRawIndexHtml();
+      const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
+      saveFileBlob(blob, 'index.html');
+      showToast('Downloaded index.html 📥');
+    }
+    if (fileType === 'js' || fileType === 'both') {
+      setTimeout(() => {
+        const jsText = getRawIndexJs();
+        const blob = new Blob([jsText], { type: 'application/javascript;charset=utf-8' });
+        saveFileBlob(blob, 'index.js');
+        showToast('Downloaded index.js 📥');
+      }, fileType === 'both' ? 400 : 0);
+    }
+  }
+
+  function downloadProjectCode(fileType = 'both') {
+    downloadFileInstant(fileType);
+  }
+
+  // Auto open code modal if URL contains download or code
+  function checkDownloadHash() {
+    if (window.location.search.includes('download') || window.location.hash.includes('download') || window.location.search.includes('code') || window.location.hash.includes('code')) {
+      openCodeModal();
+    }
+  }
+  checkDownloadHash();
+  window.addEventListener('hashchange', checkDownloadHash);
+  setTimeout(checkDownloadHash, 300);
+  setTimeout(checkDownloadHash, 1000);
+
   function showToast(msg) {
     let existing = document.getElementById('globalToast');
     if (existing) existing.remove();
@@ -1603,21 +2325,45 @@
 
   function renderInvoiceCard(inv) {
     const invId = 'inv_' + Math.random().toString(36).substr(2, 9);
+    inv.template = inv.template || 'royal-violet';
+    inv.logoBase64 = inv.logoBase64 || localStorage.getItem('vektra_saved_logo') || '';
     window.activeInvoices[invId] = inv;
+
     const currency = inv.currency || '$';
     const subtotal = (inv.items || []).reduce((acc, it) => acc + (Number(it.quantity || 1) * Number(it.rate || 0)), 0);
     const tax = Number(inv.tax || 0);
     const taxAmount = (subtotal * tax) / 100;
     const total = subtotal + taxAmount - Number(inv.discount || 0);
 
+    const templateLabels = {
+      'royal-violet': '🟣 Royal Violet (Ref 1)',
+      'corporate-cyan': '🔷 Corporate Cyan (Ref 2)',
+      'executive-onyx': '⚫ Executive Onyx',
+      'modern-emerald': '🟢 Modern Emerald'
+    };
+
+    const hasLogo = !!inv.logoBase64;
+
     return `
-      <div class="invoice-chat-card" id="${invId}">
+      <div class="invoice-chat-card tpl-${inv.template}" id="${invId}">
         <div class="inv-card-header">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="inv-pill">INVOICE</span>
+          <div class="inv-brand-row">
+            ${hasLogo ? `
+              <img src="${inv.logoBase64}" class="inv-logo-img" alt="Logo" id="${invId}_logoPreview"/>
+              <button class="inv-btn logo-btn" style="padding:4px 8px;font-size:11px;" onclick="removeInvoiceLogo('${invId}')" title="Remove Logo">✕</button>
+            ` : `
+              <span class="inv-pill">INVOICE</span>
+              <input type="file" id="${invId}_logoInput" accept="image/*" style="display:none;" onchange="uploadInvoiceLogo('${invId}', event)"/>
+              <button class="inv-btn logo-btn" style="padding:4px 8px;font-size:11px;" onclick="document.getElementById('${invId}_logoInput').click()" title="Add custom logo">🖼️ + Logo</button>
+            `}
             <strong style="color:var(--text);font-size:14px;">#${escapeHtml(inv.invoiceNumber || 'INV-001')}</strong>
           </div>
-          <span class="inv-total-pill">${currency} ${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="inv-design-badge" id="${invId}_tplBadge" onclick="cycleInvoiceDesign('${invId}')" title="Click to switch template design">
+              ${templateLabels[inv.template] || '🟣 Royal Violet'}
+            </span>
+            <span class="inv-total-pill">${currency} ${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
         </div>
         <div class="inv-card-meta">
           <div><b>Bill To:</b> ${escapeHtml(inv.billTo || 'Client')}</div>
@@ -1648,9 +2394,13 @@
           </table>
         </div>
         <div class="inv-actions-toolbar">
-          <button class="inv-btn pdf" onclick="downloadInvoicePDF('${invId}')">
+          <button class="inv-btn pdf" onclick="downloadInvoicePDF('${invId}')" title="Download PDF with current design">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             PDF
+          </button>
+          <button class="inv-btn style-btn" onclick="cycleInvoiceDesign('${invId}')" title="Switch between Royal Violet, Corporate Cyan, etc.">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            Switch Style
           </button>
           <button class="inv-btn excel" onclick="downloadInvoiceExcel('${invId}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
@@ -1677,43 +2427,503 @@
     `;
   }
 
-  async function shareInvoiceFile(input) {
-    const inv = resolveInvoice(input);
+  // ─── CYCLE INVOICE DESIGN ON-THE-FLY ───
+  function cycleInvoiceDesign(invId) {
+    const inv = resolveInvoice(invId);
     if (!inv) return;
-    const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) {
-      showToast('Loading PDF engine...');
-      return;
+
+    const templates = ['royal-violet', 'corporate-cyan', 'executive-onyx', 'modern-emerald'];
+    const templateNames = {
+      'royal-violet': '🟣 Royal Violet (Ref 1)',
+      'corporate-cyan': '🔷 Corporate Cyan (Ref 2)',
+      'executive-onyx': '⚫ Executive Onyx',
+      'modern-emerald': '🟢 Modern Emerald'
+    };
+
+    const currentIndex = templates.indexOf(inv.template || 'royal-violet');
+    const nextIndex = (currentIndex + 1) % templates.length;
+    inv.template = templates[nextIndex];
+
+    const cardEl = document.getElementById(invId);
+    if (cardEl) {
+      cardEl.classList.remove('tpl-royal-violet', 'tpl-corporate-cyan', 'tpl-executive-onyx', 'tpl-modern-emerald');
+      cardEl.classList.add(`tpl-${inv.template}`);
+      const badge = document.getElementById(`${invId}_tplBadge`);
+      if (badge) badge.textContent = templateNames[inv.template];
     }
 
-    try {
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      const primaryColor = [37, 99, 235];
-      const currency = inv.currency || '$';
+    showToast(`Design changed to ${templateNames[inv.template]} 🎨. Click PDF to generate!`);
+  }
 
-      doc.setFillColor(...primaryColor);
-      doc.rect(0, 0, 595, 45, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(18);
+  // ─── LOGO UPLOAD & REMOVE ON CARD ───
+  function uploadInvoiceLogo(invId, event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64 = e.target.result;
+      const inv = resolveInvoice(invId);
+      if (inv) inv.logoBase64 = base64;
+      try { localStorage.setItem('vektra_saved_logo', base64); } catch(_) {}
+
+      const card = document.getElementById(invId);
+      if (card && inv) {
+        card.outerHTML = renderInvoiceCard(inv);
+      }
+      showToast('Brand logo uploaded! It will appear on your PDF exports 🖼️');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeInvoiceLogo(invId) {
+    const inv = resolveInvoice(invId);
+    if (inv) inv.logoBase64 = '';
+    try { localStorage.removeItem('vektra_saved_logo'); } catch(_) {}
+    const card = document.getElementById(invId);
+    if (card && inv) {
+      card.outerHTML = renderInvoiceCard(inv);
+    }
+    showToast('Brand logo removed');
+  }
+
+  // ─── HIGH-FIDELITY PDF BUILDER MATCHING USER DESIGNS ───
+  function buildInvoicePDFDoc(inv) {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) throw new Error('jsPDF library not loaded');
+
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const currency = inv.currency || '$';
+    const subtotal = (inv.items || []).reduce((acc, it) => acc + (Number(it.quantity || 1) * Number(it.rate || 0)), 0);
+    const tax = Number(inv.tax || 0);
+    const taxAmount = (subtotal * tax) / 100;
+    const discount = Number(inv.discount || 0);
+    const total = subtotal + taxAmount - discount;
+    const template = inv.template || 'royal-violet';
+
+    // ─── DESIGN 1: ROYAL VIOLET (Matches Image 1: IMG-20260924-WA0010.jpg) ───
+    if (template === 'royal-violet') {
+      const primaryColor = [91, 69, 176]; // #5b45b0
+      const darkText = [30, 41, 59];
+      const mutedText = [100, 116, 139];
+
+      // Logo or Emblem
+      let topY = 45;
+      if (inv.logoBase64) {
+        try {
+          doc.addImage(inv.logoBase64, 'JPEG', 45, topY, 46, 46);
+          topY += 54;
+        } catch(_) {
+          topY = 45;
+        }
+      } else {
+        // Decorative purple emblem
+        doc.setDrawColor(91, 69, 176);
+        doc.setLineWidth(3.5);
+        doc.circle(60, 60, 16);
+        doc.circle(60, 60, 8);
+        topY = 90;
+      }
+
+      // Business Name
       doc.setFont('helvetica', 'bold');
-      doc.text('INVOICE', 40, 28);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(inv.invoiceNumber || 'INV-001', 555, 28, { align: 'right' });
+      doc.setTextColor(91, 69, 176);
+      doc.setFontSize(18);
+      doc.text(inv.from || 'Business Name.', 45, topY);
 
-      doc.setTextColor(30, 41, 59);
+      // Office Address & Contact
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedText);
+      const addressLines = (inv.fromAddress || 'Office Address\nMain street, Number 06/B,\nSouth Mountain, YK\n(+62) 123 456 7890').split('\n');
+      doc.text(addressLines, 45, topY + 16);
+
+      // Right Side Header: Bold "INVOICE" and Date
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.setTextColor(91, 69, 176);
+      doc.text('INVOICE', 550, 60, { align: 'right' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...darkText);
+      doc.text(inv.date || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), 550, 80, { align: 'right' });
+
+      // Client "To :"
+      const clientY = topY + 68;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...darkText);
+      doc.text('To :', 380, clientY);
+      doc.setFont('helvetica', 'bold');
+      doc.text(inv.billTo || 'Client Name', 380, clientY + 15);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mutedText);
+      doc.setFontSize(9);
+      const toAddress = (inv.billToAddress || 'Main street, Your Loc.\nNumber 06/B').split('\n');
+      doc.text(toAddress, 380, clientY + 28);
+
+      // Line Items Table
+      const tableStartY = clientY + 65;
+      const tableRows = (inv.items || []).map((it, idx) => [
+        it.description || 'Items Name',
+        `${currency} ${Number(it.rate || 0).toLocaleString(undefined, {minimumFractionDigits:2})}`,
+        it.quantity || 1,
+        `${currency} ${(Number(it.quantity || 1) * Number(it.rate || 0)).toLocaleString(undefined, {minimumFractionDigits:2})}`
+      ]);
+
+      doc.autoTable({
+        startY: tableStartY,
+        head: [['Items Description', 'Unit Price', 'Qnt', 'Total']],
+        body: tableRows,
+        theme: 'plain',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10,
+          cellPadding: 8
+        },
+        styles: {
+          fontSize: 9.5,
+          cellPadding: 8,
+          textColor: darkText,
+          lineColor: [229, 231, 235],
+          lineWidth: { bottom: 0.8 }
+        },
+        columnStyles: {
+          0: { cellWidth: 260 },
+          1: { halign: 'right', cellWidth: 90 },
+          2: { halign: 'center', cellWidth: 60 },
+          3: { halign: 'right', cellWidth: 95 }
+        },
+        margin: { left: 45, right: 45 }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 22;
+
+      // Note on left
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...darkText);
+      doc.text('Note:', 45, finalY + 10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mutedText);
+      doc.setFontSize(8.5);
+      doc.text(inv.notes || 'Thank you for your business. Please remit payment via bank transfer.', 45, finalY + 24, { maxWidth: 260 });
+
+      // Summary Breakdown on Right
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...darkText);
+      doc.text('SUBTOTAL :', 400, finalY + 8);
+      doc.text(`${currency} ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, finalY + 8, { align: 'right' });
+
+      let sumOffset = finalY + 26;
+      if (tax > 0) {
+        doc.text(`Tax VAT ${tax}% :`, 400, sumOffset);
+        doc.text(`${currency} ${taxAmount.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, sumOffset, { align: 'right' });
+        sumOffset += 18;
+      }
+      if (discount > 0) {
+        doc.text('DISCOUNT :', 400, sumOffset);
+        doc.text(`${currency} ${discount.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, sumOffset, { align: 'right' });
+        sumOffset += 18;
+      }
+
+      // TOTAL DUE Purple Pill Banner (Exact match to Image 1)
+      doc.setFillColor(91, 69, 176);
+      doc.roundedRect(360, sumOffset + 6, 190, 34, 4, 4, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('TOTAL DUE :', 375, sumOffset + 27);
+      doc.text(`${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2})}`, 540, sumOffset + 27, { align: 'right' });
+
+      // "Thank you for your Business"
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(91, 69, 176);
+      doc.text('Thank you for your Business', 45, sumOffset + 68);
+
+      // Bottom 3-Column Footer with divider line
+      const footY = 745;
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(1);
+      doc.line(45, footY, 550, footY);
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...darkText);
+      doc.text('Questions?', 45, footY + 18);
+      doc.text('Payment Info :', 220, footY + 18);
+      doc.text('Terms & Conditions/Note:', 390, footY + 18);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...mutedText);
+      doc.text('Email: info@vektrastudio.com\nCall us: (+1) 234 567 890', 45, footY + 32);
+      doc.text('Bank: First Digital Bank\nAccount: 1234 567 890\nA/C Name: VektraStudio', 220, footY + 32);
+      doc.text('Payment due within 14 days of issue.\nLate fees may apply after due date.', 390, footY + 32, { maxWidth: 160 });
+    }
+
+    // ─── DESIGN 2: CORPORATE CYAN & SLATE (Matches Image 2: IMG-20260924-WA0009.jpg) ───
+    else if (template === 'corporate-cyan') {
+      const cyan = [0, 168, 232];
+      const darkSlate = [27, 38, 59];
+      const mutedText = [100, 116, 139];
+
+      // Top Left Company Header
+      if (inv.logoBase64) {
+        try { doc.addImage(inv.logoBase64, 'JPEG', 45, 40, 48, 48); } catch(_) {}
+      } else {
+        // Geometric cyan logo shape
+        doc.setFillColor(...cyan);
+        doc.roundedRect(45, 42, 38, 38, 8, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text('V', 58, 68);
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(20, 20, 20);
+      doc.setFontSize(16);
+      doc.text((inv.from || 'COMPANY').toUpperCase(), 95, 56);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...cyan);
+      doc.text('COMPANY TAGLINE HERE', 95, 68);
+
+      // Top Right INVOICE Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(30);
+      doc.setTextColor(...cyan);
+      doc.text('INVOICE', 550, 58, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...mutedText);
+      doc.text(`Invoice Number: ${inv.invoiceNumber || 'INV-001'}`, 550, 74, { align: 'right' });
+      doc.text(`Invoice Date: ${inv.date || '2026-09-24'}`, 550, 86, { align: 'right' });
+
+      // INVOICE TO & Dear Client
+      const toY = 120;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...cyan);
+      doc.text('INVOICE TO:', 45, toY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(...darkSlate);
+      doc.text(inv.billTo || 'Client Name', 45, toY + 16);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...mutedText);
+      doc.text((inv.billToAddress || 'Managing Director\nPhone: +123 456 7890\nEmail: client@example.com').split('\n'), 45, toY + 30);
+
+      // Dear client note on right
+      doc.text('Dear Client,\nWe appreciate your continued partnership. Below is the detailed breakdown\nof professional services rendered for your account.', 280, toY + 16, { maxWidth: 270 });
+
+      // Dynamic Table with Cyan & Dark Slate Header
+      const tableRows = (inv.items || []).map((it, idx) => [
+        String(idx + 1).padStart(2, '0'),
+        it.description || 'Product Description',
+        `${currency} ${Number(it.rate || 0).toLocaleString(undefined, {minimumFractionDigits:2})}`,
+        it.quantity || 1,
+        `${currency} ${(Number(it.quantity || 1) * Number(it.rate || 0)).toLocaleString(undefined, {minimumFractionDigits:2})}`
+      ]);
+
+      doc.autoTable({
+        startY: toY + 70,
+        head: [['NO.', 'PRODUCT DESCRIPTION', 'PRICE', 'QUANTITY', 'TOTAL']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: {
+          fillColor: cyan,
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 9,
+          cellPadding: 7
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 7,
+          textColor: darkSlate
+        },
+        columnStyles: {
+          0: { cellWidth: 35, halign: 'center' },
+          1: { cellWidth: 240 },
+          2: { halign: 'right', cellWidth: 75 },
+          3: { halign: 'center', cellWidth: 65 },
+          4: { halign: 'right', cellWidth: 90 }
+        },
+        margin: { left: 45, right: 45 }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 18;
+
+      // Payment Method on left
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...darkSlate);
+      doc.text('Payment Method', 45, finalY + 10);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...mutedText);
+      doc.text('Account No: 1234 5678 910\nAccount Name: VektraStudio Corp\nBranch: Main Headquarters', 45, finalY + 24);
+
+      // Signature Block in Center (Matching image 2)
+      doc.setDrawColor(200, 200, 200);
+      doc.line(250, finalY + 45, 360, finalY + 45);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...darkSlate);
+      doc.text('Your Name & Signature', 305, finalY + 56, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...mutedText);
+      doc.text('Account Manager', 305, finalY + 66, { align: 'center' });
+
+      // Right Breakdown
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedText);
+      doc.text('Subtotal:', 420, finalY + 10);
+      doc.text(`${currency} ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, finalY + 10, { align: 'right' });
+
+      let cyanSumOffset = finalY + 24;
+      if (discount > 0) {
+        doc.text('Discount:', 420, cyanSumOffset);
+        doc.text(`${currency} ${discount.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, cyanSumOffset, { align: 'right' });
+        cyanSumOffset += 14;
+      }
+      if (tax > 0) {
+        doc.text(`Tax (${tax}%):`, 420, cyanSumOffset);
+        doc.text(`${currency} ${taxAmount.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, cyanSumOffset, { align: 'right' });
+        cyanSumOffset += 14;
+      }
+
+      // Cyan Total Box
+      doc.setFillColor(...cyan);
+      doc.rect(390, cyanSumOffset + 6, 160, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('Total:', 405, cyanSumOffset + 24);
+      doc.text(`${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2})}`, 540, cyanSumOffset + 24, { align: 'right' });
+
+      // Thank You Note
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...cyan);
+      doc.text('Thank You For Your Business', 45, 715);
+
+      // Contact badges & Terms
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...mutedText);
+      doc.text('Phone: +123 4567 8910\nEmail: contact@vektrastudio.com\nLocation: Global Tech Center', 45, 730);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...darkSlate);
+      doc.text('Terms & Conditions:', 250, 730);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...mutedText);
+      doc.text('All payments subject to contract terms. Deliverables transfer upon settlement in full.', 250, 742, { maxWidth: 300 });
+
+      // Bottom Geometric Cyan Banner (Image 2 style)
+      doc.setFillColor(...cyan);
+      doc.rect(40, 785, 220, 10, 'F');
+      doc.setFillColor(...darkSlate);
+      doc.rect(260, 785, 295, 10, 'F');
+    }
+
+    // ─── DESIGN 3: EXECUTIVE ONYX (Minimalist Haute-Couture) ───
+    else if (template === 'executive-onyx') {
+      const onyx = [17, 24, 39];
+      const gray = [107, 114, 128];
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(24);
+      doc.setTextColor(...onyx);
+      doc.text('I N V O I C E', 45, 65);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...gray);
+      doc.text(`NO. ${inv.invoiceNumber || 'INV-001'}  ·  DATE: ${inv.date || '2026-09-24'}`, 45, 82);
+
+      doc.setLineWidth(1.5);
+      doc.setDrawColor(...onyx);
+      doc.line(45, 96, 550, 96);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('ISSUED TO:', 45, 125);
+      doc.setFont('helvetica', 'normal');
+      doc.text(inv.billTo || 'Client', 45, 140);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('ISSUED BY:', 350, 125);
+      doc.setFont('helvetica', 'normal');
+      doc.text(inv.from || 'VektraStudio', 350, 140);
+
+      const tableRows = (inv.items || []).map((it, idx) => [
+        idx + 1,
+        it.description || 'Description',
+        it.quantity || 1,
+        `${currency} ${Number(it.rate || 0).toLocaleString()}`,
+        `${currency} ${(Number(it.quantity || 1) * Number(it.rate || 0)).toLocaleString()}`
+      ]);
+
+      doc.autoTable({
+        startY: 170,
+        head: [['#', 'DESCRIPTION', 'QTY', 'PRICE', 'AMOUNT']],
+        body: tableRows,
+        theme: 'plain',
+        headStyles: { fillColor: onyx, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: 8, textColor: onyx, lineColor: [229, 231, 235], lineWidth: { bottom: 0.5 } },
+        margin: { left: 45, right: 45 }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 25;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...onyx);
+      doc.text(`TOTAL AMOUNT: ${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, finalY + 15, { align: 'right' });
+    }
+
+    // ─── DESIGN 4: MODERN EMERALD (Clean FinTech Green) ───
+    else {
+      const emerald = [5, 150, 105];
+      const slate = [30, 41, 59];
+
+      doc.setFillColor(...emerald);
+      doc.rect(0, 0, 595, 50, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('INVOICE', 45, 32);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`#${inv.invoiceNumber || 'INV-001'}`, 550, 32, { align: 'right' });
+
+      doc.setTextColor(...slate);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('BILLED FROM:', 40, 75);
+      doc.text('FROM:', 45, 80);
       doc.setFont('helvetica', 'normal');
-      doc.text(inv.from || 'VektraStudio', 40, 90);
-      doc.text(`Date: ${inv.date || new Date().toISOString().split('T')[0]}`, 40, 105);
+      doc.text(inv.from || 'VektraStudio', 45, 95);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('BILL TO:', 340, 75);
+      doc.text('TO:', 350, 80);
       doc.setFont('helvetica', 'normal');
-      doc.text(inv.billTo || 'Client', 340, 90);
-      doc.text(`Due Date: ${inv.dueDate || 'Upon Receipt'}`, 340, 105);
+      doc.text(inv.billTo || 'Client', 350, 95);
 
       const tableRows = (inv.items || []).map((it, idx) => [
         idx + 1,
@@ -1724,34 +2934,32 @@
       ]);
 
       doc.autoTable({
-        startY: 135,
-        head: [['#', 'Item Description', 'Qty', 'Unit Price', 'Amount']],
+        startY: 130,
+        head: [['#', 'Item', 'Qty', 'Rate', 'Total']],
         body: tableRows,
         theme: 'striped',
-        headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-        margin: { left: 40, right: 40 },
-        styles: { fontSize: 10, cellPadding: 6 }
+        headStyles: { fillColor: emerald, textColor: 255, fontStyle: 'bold' },
+        margin: { left: 45, right: 45 }
       });
 
       const finalY = doc.lastAutoTable.finalY + 20;
-      const subtotal = (inv.items || []).reduce((acc, it) => acc + (Number(it.quantity || 1) * Number(it.rate || 0)), 0);
-      const tax = Number(inv.tax || 0);
-      const taxAmount = (subtotal * tax) / 100;
-      const total = subtotal + taxAmount - Number(inv.discount || 0);
-
-      doc.setFont('helvetica', 'normal');
-      doc.text('Subtotal:', 380, finalY);
-      doc.text(`${currency} ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY, { align: 'right' });
-      if (tax > 0) {
-        doc.text(`Tax (${tax}%):`, 380, finalY + 16);
-        doc.text(`${currency} ${taxAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY + 16, { align: 'right' });
-      }
-      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('TOTAL DUE:', 380, finalY + 42);
-      doc.text(`${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY + 42, { align: 'right' });
+      doc.setFontSize(12);
+      doc.setTextColor(...emerald);
+      doc.text(`TOTAL DUE: ${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2})}`, 550, finalY + 20, { align: 'right' });
+    }
 
+    return doc;
+  }
+
+  // ─── SHARE VIA MOBILE SHARE SHEET ───
+  async function shareInvoiceFile(input) {
+    const inv = resolveInvoice(input);
+    if (!inv) return;
+
+    try {
+      showToast('Preparing invoice document...');
+      const doc = buildInvoicePDFDoc(inv);
       const pdfBlob = doc.output('blob');
       const filename = `${inv.invoiceNumber || 'Invoice'}.pdf`;
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
@@ -1768,115 +2976,28 @@
     } catch (e) {
       if (e.name !== 'AbortError') console.warn('Share error:', e);
     }
-    // Fallback if Web Share API files not supported on current device
+    // Fallback if Web Share API files not supported
     downloadInvoicePDF(input);
   }
 
+  // ─── DOWNLOAD PDF INVOICE ───
   function downloadInvoicePDF(input) {
     const inv = resolveInvoice(input);
     if (!inv) return;
-    const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) {
-      showToast('PDF library loading, please try in 1s...');
-      return;
-    }
-
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const primaryColor = [37, 99, 235];
-    const currency = inv.currency || '$';
-
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 595, 45, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 40, 28);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(inv.invoiceNumber || 'INV-001', 555, 28, { align: 'right' });
-
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('BILLED FROM:', 40, 75);
-    doc.setFont('helvetica', 'normal');
-    doc.text(inv.from || 'VektraStudio', 40, 90);
-    doc.text(`Date: ${inv.date || new Date().toISOString().split('T')[0]}`, 40, 105);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('BILL TO:', 340, 75);
-    doc.setFont('helvetica', 'normal');
-    doc.text(inv.billTo || 'Client', 340, 90);
-    doc.text(`Due Date: ${inv.dueDate || 'Upon Receipt'}`, 340, 105);
-
-    const tableRows = (inv.items || []).map((it, idx) => [
-      idx + 1,
-      it.description || 'Item',
-      it.quantity || 1,
-      `${currency} ${Number(it.rate || 0).toLocaleString()}`,
-      `${currency} ${(Number(it.quantity || 1) * Number(it.rate || 0)).toLocaleString()}`
-    ]);
-
-    doc.autoTable({
-      startY: 135,
-      head: [['#', 'Item Description', 'Qty', 'Unit Price', 'Amount']],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-      margin: { left: 40, right: 40 },
-      styles: { fontSize: 10, cellPadding: 6 },
-      columnStyles: {
-        0: { cellWidth: 30 },
-        2: { halign: 'right', cellWidth: 45 },
-        3: { halign: 'right', cellWidth: 85 },
-        4: { halign: 'right', cellWidth: 85 }
-      }
-    });
-
-    const finalY = doc.lastAutoTable.finalY + 20;
-    const subtotal = (inv.items || []).reduce((acc, it) => acc + (Number(it.quantity || 1) * Number(it.rate || 0)), 0);
-    const tax = Number(inv.tax || 0);
-    const taxAmount = (subtotal * tax) / 100;
-    const total = subtotal + taxAmount - Number(inv.discount || 0);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text('Subtotal:', 380, finalY);
-    doc.text(`${currency} ${subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY, { align: 'right' });
-
-    if (tax > 0) {
-      doc.text(`Tax (${tax}%):`, 380, finalY + 16);
-      doc.text(`${currency} ${taxAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY + 16, { align: 'right' });
-    }
-
-    doc.setLineWidth(1);
-    doc.setDrawColor(220, 220, 220);
-    doc.line(380, finalY + 24, 555, finalY + 24);
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text('TOTAL DUE:', 380, finalY + 42);
-    doc.text(`${currency} ${total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`, 555, finalY + 42, { align: 'right' });
-
-    if (inv.notes) {
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(100, 116, 139);
-      doc.text(`Notes / Instructions: ${inv.notes}`, 40, finalY + 70, { maxWidth: 500 });
-    }
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text('Generated by Vektra AI · Thank you for your business!', 297, 810, { align: 'center' });
 
     try {
-      doc.save(`${inv.invoiceNumber || 'Invoice'}.pdf`);
-    } catch (_) {
-      const blob = doc.output('blob');
-      saveFileBlob(blob, `${inv.invoiceNumber || 'Invoice'}.pdf`);
+      const doc = buildInvoicePDFDoc(inv);
+      try {
+        doc.save(`${inv.invoiceNumber || 'Invoice'}.pdf`);
+      } catch (_) {
+        const blob = doc.output('blob');
+        saveFileBlob(blob, `${inv.invoiceNumber || 'Invoice'}.pdf`);
+      }
+      showToast(`Downloaded PDF (${inv.template || 'Royal Violet'}) 📄`);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      showToast('Failed to generate PDF: ' + err.message);
     }
-    showToast('Downloaded PDF Invoice 📄');
   }
 
   function downloadInvoiceExcel(input) {
@@ -2123,6 +3244,52 @@
     printWin.document.close();
   }
 
+  let currentModalLogoBase64 = localStorage.getItem('vektra_saved_logo') || '';
+
+  function handleModalLogoUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      currentModalLogoBase64 = e.target.result;
+      try { localStorage.setItem('vektra_saved_logo', currentModalLogoBase64); } catch(_) {}
+      updateModalLogoUI();
+      showToast('Brand logo selected 🖼️');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeModalLogo() {
+    currentModalLogoBase64 = '';
+    try { localStorage.removeItem('vektra_saved_logo'); } catch(_) {}
+    updateModalLogoUI();
+    showToast('Logo removed');
+  }
+
+  function updateModalLogoUI() {
+    const previewWrap = document.getElementById('modalLogoPreviewWrap');
+    const previewImg = document.getElementById('modalLogoPreview');
+    const removeBtn = document.getElementById('modalRemoveLogoBtn');
+    if (currentModalLogoBase64) {
+      if (previewWrap) previewWrap.style.display = 'block';
+      if (previewImg) previewImg.src = currentModalLogoBase64;
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+    } else {
+      if (previewWrap) previewWrap.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'none';
+    }
+  }
+
+  function previewTemplateSelection(val) {
+    const names = {
+      'royal-violet': '🟣 Royal Violet (Ref 1)',
+      'corporate-cyan': '🔷 Corporate Cyan (Ref 2)',
+      'executive-onyx': '⚫ Executive Onyx',
+      'modern-emerald': '🟢 Modern Emerald'
+    };
+    showToast(`Template: ${names[val] || val}`);
+  }
+
   function openInvoiceModal(prefill) {
     const modal = document.getElementById('invoiceModalBackdrop');
     if (!modal) return;
@@ -2131,15 +3298,21 @@
     const today = new Date().toISOString().split('T')[0];
     const due = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
 
+    document.getElementById('invTemplateSelect').value = prefill?.template || 'royal-violet';
     document.getElementById('invNum').value = prefill?.invoiceNumber || ('INV-' + Math.floor(1000 + Math.random() * 9000));
     document.getElementById('invDate').value = prefill?.date || today;
     document.getElementById('invDueDate').value = prefill?.dueDate || due;
     document.getElementById('invFrom').value = prefill?.from || 'VektraStudio';
     document.getElementById('invBillTo').value = prefill?.billTo || '';
+    document.getElementById('invFromAddress').value = prefill?.fromAddress || '123 Tech Blvd, Suite 400 · (+1) 555-0199';
+    document.getElementById('invBillToAddress').value = prefill?.billToAddress || '';
     document.getElementById('invCurrency').value = prefill?.currency || '$';
     document.getElementById('invTax').value = prefill?.tax !== undefined ? prefill.tax : 0;
     document.getElementById('invDiscount').value = prefill?.discount !== undefined ? prefill.discount : 0;
     document.getElementById('invNotes').value = prefill?.notes || 'Thank you for your business! Please make payment within 14 days.';
+
+    currentModalLogoBase64 = prefill?.logoBase64 || localStorage.getItem('vektra_saved_logo') || '';
+    updateModalLogoUI();
 
     const tbody = document.getElementById('invItemsBody');
     tbody.innerHTML = '';
@@ -2193,12 +3366,16 @@
     });
 
     return {
+      template: document.getElementById('invTemplateSelect')?.value || 'royal-violet',
+      logoBase64: currentModalLogoBase64 || '',
       invoiceNumber: document.getElementById('invNum').value.trim() || 'INV-001',
       currency: document.getElementById('invCurrency').value || '$',
       date: document.getElementById('invDate').value,
       dueDate: document.getElementById('invDueDate').value,
       from: document.getElementById('invFrom').value.trim() || 'VektraStudio',
+      fromAddress: document.getElementById('invFromAddress')?.value.trim() || '',
       billTo: document.getElementById('invBillTo').value.trim() || 'Client',
+      billToAddress: document.getElementById('invBillToAddress')?.value.trim() || '',
       tax: parseFloat(document.getElementById('invTax').value) || 0,
       discount: parseFloat(document.getElementById('invDiscount').value) || 0,
       notes: document.getElementById('invNotes').value.trim(),
@@ -2543,4 +3720,3 @@
 </script>
 </body>
 </html>
- 
