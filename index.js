@@ -187,6 +187,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ─── Direct Code File Downloads (Attachment) ────────────────────────────────
+  if (req.method === 'GET' && (parsedUrl.pathname === '/download/index.html' || parsedUrl.pathname === '/download/html')) {
+    const filePath = path.join(__dirname, 'index.html');
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="index.html"'
+      });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+  }
+
+  if (req.method === 'GET' && (parsedUrl.pathname === '/download/index.js' || parsedUrl.pathname === '/download/js')) {
+    const filePath = path.join(__dirname, 'index.js');
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="index.js"'
+      });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+  }
+
   // ─── Serve index.html and static files ──────────────────────────────────────
   if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/index.html')) {
     const htmlPath = path.join(__dirname, 'index.html');
@@ -234,7 +259,7 @@ const server = http.createServer(async (req, res) => {
         const payload = JSON.parse(body || '{}');
         const sessionId = payload.sessionId || 'default';
         const userMessage = (payload.message || '').trim();
-        const image = payload.image; // { base64: "...", mimeType: "image/jpeg" }
+        const image = payload.image;
 
         if (!webSessions[sessionId]) {
           webSessions[sessionId] = [];
@@ -269,7 +294,6 @@ const server = http.createServer(async (req, res) => {
         } 
         // Case 2: Standard Text / Search
         else {
-          // Check if search is beneficial (queries with current events, weather, stock, who won, 2025, 2026, latest)
           const needsSearch = /\b(weather|stock|news|score|release date|today|yesterday|latest|price of|who is the current)\b/i.test(userMessage);
           let searchContext = '';
 
