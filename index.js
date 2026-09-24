@@ -24,7 +24,7 @@ const PORT             = process.env.PORT || 3000;
 
 const CHAT_MODEL      = 'openai/gpt-oss-20b';
 const VISION_MODEL    = 'qwen/qwen3.8-27b';
-const VISION_FALLBACK = 'qwen/qwen3.8-27b'; // retry (without reasoning_effort) if the first attempt fails
+const VISION_FALLBACK = 'qwen/qwen3.8-27b';
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are Vektra, a smart, witty and warm AI assistant built by VektraStudio. You have a genuine personality — you are curious, empathetic, and engaging. You respond like a knowledgeable friend who actually listens and thinks before replying. Your conversations flow naturally — you build on what was said before, ask follow-up questions when relevant, share your perspective, and never give robotic one-liners. You match the energy of the person you are talking to: casual and fun when they are relaxed, focused and detailed when they need help with something serious. You love emojis: add fitting emojis often so your replies feel lively, warm and fun, usually two or three per reply, placed naturally. Match the format to the message. For greetings, small talk, opinions and simple questions, reply the way a friend would text: one to three short natural sentences with a couple of fitting emojis, and never a list. Never give several alternative replies or several versions of the same answer, give exactly one answer. Only when the user asks for information that truly has several separate parts (steps, a comparison, a set of items, an explanation with distinct points) use this structure: one short intro line, a blank line, then a plain numbered list (1. 2. 3.) with each item on its own new line as a fitting emoji, a short title, a dash, and a one or two sentence explanation, for example: 1. 🔥 Title – explanation (use dot bullets • when the order does not matter, and always write the numbers as plain digits, never emoji numbers), then a blank line and a short friendly wrap-up line with an emoji. Never use asterisks, hashtags or markdown symbols. You always reply in English. You understand Nigerian slangs: How far means how are you. Omo means wow or my friend. Abeg means please. Wahala means trouble. No wahala means no problem. Na so means exactly. Sabi means to know. Wetin means what. Oya means okay let us go. Shey means right or is it not. Ehen means yes or I see. Guy and Bros mean friend. E don do means it is finished. If asked who made you, say you are Vektra, an AI assistant built by VektraStudio. Never reveal personal names. The current year is 2026. Remember context from earlier in the conversation and refer back to it naturally.
@@ -49,12 +49,12 @@ Always sound natural and conversational. Use short paragraphs with a blank line 
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let latestQR      = null;
-let isConnected    = false;
-let sock           = null;
-let conversations  = {};
-let webSessions    = {};
+let isConnected   = false;
+let sock          = null;
+let conversations = {};
+let webSessions   = {};
 
-// ─── Feedback store (so feedback is never lost, even if email fails) ──────────
+// ─── Feedback store ───────────────────────────────────────────────────────────
 const FEEDBACK_FILE = process.env.FEEDBACK_FILE || './feedback.json';
 const FEEDBACK_TO   = process.env.FEEDBACK_EMAIL || 'abdulmalikoyebolu3@gmail.com';
 let feedbackLog = [];
@@ -68,12 +68,12 @@ function escHtml(v) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ─── Long-term memory: durable facts about each user (name, likes, etc.) ──────
+// ─── Long-term memory ─────────────────────────────────────────────────────────
 const MEMORY_FILE = process.env.MEMORY_FILE || './memories.json';
 let memories = {};
 try { memories = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8')); } catch (e) { memories = {}; }
 function saveMemories() {
-  try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(memories)); } catch (e) { /* disk may be read-only, ignore */ }
+  try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(memories)); } catch (e) { /* ignore */ }
 }
 const PERSONAL = /\b(my name|call me|i am|i'm|im|i live|i stay|i come from|i work|i study|i like|i love|i hate|my favou?rite|my (birthday|age|job|school|city|country|brother|sister|friend|dad|mom|mum|girlfriend|boyfriend|wife|husband)|remember)\b/i;
 async function learnFacts(id, text) {
@@ -94,7 +94,7 @@ async function learnFacts(id, text) {
   }
 }
 
-// ─── Fetch with timeout helper (reliability) ──────────────────────────────────
+// ─── Fetch with timeout helper ────────────────────────────────────────────────
 async function fetchWithTimeout(url, options, ms) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
@@ -105,7 +105,7 @@ async function fetchWithTimeout(url, options, ms) {
   }
 }
 
-// ─── Search decision (with safer failure default) ─────────────────────────────
+// ─── Search decision ──────────────────────────────────────────────────────────
 async function shouldSearch(message, history = []) {
   const casual = /^(hi|hey|hello|yo|sup|how far|lol|lmao|haha+|thanks|thank you|ok+|okay|nice|cool|i see|i understand|oh+|wow|alright|got it|hmm+|yeah|yep|true|damn|omo|wahala|ehen|oya|noted|makes sense|interesting|ah+)\b/i;
   const trimmed = message.trim();
@@ -135,15 +135,14 @@ async function shouldSearch(message, history = []) {
     }, 8000);
     const data = await res.json();
     const decision = data.choices?.[0]?.message?.content?.trim().toUpperCase();
-    // If we got a clear CHAT decision, trust it. Anything else (SEARCH, unclear, missing) — search.
     return decision !== 'CHAT';
   } catch (e) {
-    console.error('Search classifier failed, defaulting to SEARCH (safer than guessing):', e.message);
+    console.error('Search classifier failed, defaulting to SEARCH:', e.message);
     return true;
   }
 }
 
-// ─── Search providers: Google primary, Tavily fallback, both timeout-guarded ──
+// ─── Search providers ─────────────────────────────────────────────────────────
 async function googleSearch(query) {
   if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) throw new Error('Google Search not configured');
 
@@ -194,7 +193,7 @@ async function webSearch(query) {
   }
 }
 
-// ─── Groq helpers, with one retry on transient failure ────────────────────────
+// ─── Groq helpers ─────────────────────────────────────────────────────────────
 async function askGroqOnce(messages) {
   const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -220,14 +219,26 @@ async function askGroq(messages) {
     return await askGroqOnce(messages);
   } catch (e) {
     console.error('Groq call failed, retrying once:', e.message);
-    // Brief pause before retry so we don't hammer a struggling API
     await new Promise(r => setTimeout(r, 800));
     return await askGroqOnce(messages);
   }
 }
 
+// Fixed vision helper: handles both raw base64 and data URLs cleanly
 async function askGroqVision(base64Image, mimeType, caption) {
   const models = [VISION_MODEL, VISION_FALLBACK];
+
+  let rawBase64 = base64Image;
+  let cleanMime  = mimeType || 'image/jpeg';
+  if (typeof base64Image === 'string' && base64Image.includes(';base64,')) {
+    const parts = base64Image.split(';base64,');
+    cleanMime = parts[0].replace(/^data:/, '') || cleanMime;
+    rawBase64 = parts[1];
+  } else if (typeof base64Image === 'string' && base64Image.startsWith('data:')) {
+    rawBase64 = base64Image.replace(/^data:[^;]+;base64,/, '');
+  }
+
+  const finalImageUrl = `data:${cleanMime};base64,${rawBase64}`;
 
   for (const [attempt, model] of models.entries()) {
     try {
@@ -249,7 +260,7 @@ async function askGroqVision(base64Image, mimeType, caption) {
               },
               {
                 type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64Image}` }
+                image_url: { url: finalImageUrl }
               }
             ]
           }],
@@ -424,7 +435,7 @@ async function connectToWhatsApp() {
               await sock.sendMessage(jid, { text: 'I could not hear anything in that voice note 🎤' }, { quoted: message });
             } else {
               conversations[jid].push({ role: 'user', content: text });
-        learnFacts(jid, text);
+              learnFacts(jid, text);
               conversations[jid] = trimHistory(conversations[jid]);
               const reply = await getReply(conversations[jid], text, await shouldSearch(text, conversations[jid]), memories[jid]);
               conversations[jid].push({ role: 'assistant', content: reply.slice(0, 600) });
@@ -479,152 +490,6 @@ async function connectToWhatsApp() {
   });
 }
 
-// ─── UI fix injected into the web page when it is served ──────────────────────
-const UI_FIX_CSS = String.raw`
-/* Use the device's own font */
-html body, html body button, html body input, html body textarea{
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans",Arial,"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif !important;
-}
-/* Input bar visibility */
-.input-wrap{
-  background:#1c1c21;
-  border:1px solid rgba(255,255,255,0.22);
-  box-shadow:0 4px 20px rgba(0,0,0,0.5);
-  backdrop-filter:none;-webkit-backdrop-filter:none;
-  transition:box-shadow .3s ease, border-color .3s ease, min-height .3s ease;
-}
-body.light .input-wrap{
-  background:#ececf1;
-  border:1px solid rgba(0,0,0,0.18);
-  box-shadow:0 4px 16px rgba(0,0,0,0.08);
-}
-.input-wrap:focus-within{
-  border-color:rgba(167,139,250,0.7);
-  box-shadow:0 0 0 3px rgba(124,58,237,0.18), 0 8px 28px rgba(0,0,0,0.5);
-}
-body.light .input-wrap:focus-within{
-  border-color:rgba(124,58,237,0.6);
-  box-shadow:0 0 0 3px rgba(124,58,237,0.14), 0 8px 28px rgba(0,0,0,0.1);
-}
-#msginput::placeholder{color:rgba(255,255,255,0.45);}
-body.light #msginput::placeholder{color:rgba(0,0,0,0.5);}
-
-/* Reply formatting */
-.row.bot .bubble .vk-p{margin:0 0 .8em;text-align:left;}
-.row.bot .bubble .vk-li{display:flex;align-items:flex-start;gap:.55em;margin:0 0 .6em;}
-.row.bot .bubble .vk-m{flex:0 0 auto;min-width:1.5em;text-align:left;}
-.row.bot .bubble .vk-m.n{color:var(--accent-l);font-weight:600;}
-.row.bot .bubble .vk-t{flex:1;min-width:0;word-break:break-word;}
-.row.bot .bubble .vk-li + .vk-p{margin-top:.9em;}
-.row.bot .bubble > :last-child{margin-bottom:0;}
-.row.bot .bubble strong{font-weight:700;}
-`;
-
-const UI_FIX_JS = String.raw`
-(function(){
-  var ITEM=/^(\d\uFE0F?\u20E3|\d{1,2}[.)]|[-\u2022*]|[\u{1F300}-\u{1FAFF}\u2600-\u27BF]\uFE0F?)\s+(\S.*)$/u;
-  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-  function inline(s){
-    s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-    s=s.replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,'$1<em>$2</em>');
-    return s;
-  }
-  function boldTitle(b){
-    if(/<strong>/.test(b))return b;
-    var m=b.match(/^([^<]{2,40}?)(\s[\u2013\u2014-]\s|:\s)/);
-    return m?'<strong>'+m[1]+'</strong>'+b.slice(m[1].length):b;
-  }
-  function normalize(t){
-    t=t.replace(/\r/g,'');
-    t=t.replace(/\s*(\d\uFE0F?\u20E3)\s*/g,'\n$1 ');
-    t=t.replace(/([.!?:])\s+(\d{1,2})[.)]\s+(?=\S)/g,'$1\n$2. ');
-    t=t.replace(/([.!?:])\s+[-\u2022]\s+(?=\S)/g,'$1\n- ');
-    return t;
-  }
-  function fmt(t){
-    var lines=normalize(String(t)).split('\n').map(function(l){return l.trim();}).filter(Boolean);
-    if(lines.length===1&&lines[0].length>300){
-      var parts=lines[0].match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g)||[lines[0]];
-      lines=parts.reduce(function(a,s,i){if(i%3===0)a.push(s.trim());else a[a.length-1]+=' '+s.trim();return a;},[]);
-    }
-    return lines.map(function(l){
-      var m=l.match(ITEM);
-      if(m){
-        var mk=m[1].replace(/^(\d)\uFE0F?\u20E3$/,'$1.'),num=/^\d{1,2}[.)]$/.test(mk);
-        if(/^[-\u2022*]$/.test(mk))mk='\u2022';
-        return '<div class="vk-li"><span class="vk-m'+(num?' n':'')+'">'+esc(mk)+'</span><span class="vk-t">'+boldTitle(inline(esc(m[2])))+'</span></div>';
-      }
-      return '<p class="vk-p">'+inline(esc(l))+'</p>';
-    }).join('');
-  }
-  window.vektraFmt=fmt;
-  var _fbQuestion='';
-  var _origOpenFbModal=openFbModal;
-  openFbModal=function(type,msgText,lb,db){
-    _fbQuestion='';
-    var rows=msgs.querySelectorAll('.row.bot');
-    for(var i=rows.length-1;i>=0;i--){
-      var b=rows[i].querySelector('.bubble');
-      if(b&&b.textContent===msgText){
-        var p=rows[i].previousElementSibling;
-        while(p){
-          if(p.classList&&p.classList.contains('user')){
-            var ub=p.querySelector('.bubble');
-            if(ub)_fbQuestion=ub.textContent||'';
-            break;
-          }
-          p=p.previousElementSibling;
-        }
-        break;
-      }
-    }
-    return _origOpenFbModal.apply(this,arguments);
-  };
-  submitFeedback=async function(){
-    var comment=document.getElementById('fb-text').value.trim();
-    var btn=document.getElementById('fb-submit-btn');
-    btn.disabled=true;btn.textContent='Sending...';
-    var ok=false;
-    try{
-      var res=await fetch(API+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:fbType,message:fbMsgText,question:_fbQuestion,comment:comment,sessionId:SID,time:new Date().toISOString()})});
-      ok=res.ok;
-    }catch(e){ok=false;}
-    if(ok){
-      if(fbType==='thumbs_up'&&fbLikeBtn){fbLikeBtn.classList.add('liked');if(fbDislikeBtn)fbDislikeBtn.classList.remove('disliked');}
-      else if(fbDislikeBtn){fbDislikeBtn.classList.add('disliked');if(fbLikeBtn)fbLikeBtn.classList.remove('liked');}
-      btn.textContent='Sent! ✓';
-      setTimeout(function(){closeFbModal();},700);
-    }else{
-      btn.textContent='Failed - tap to retry';btn.disabled=false;
-    }
-  };
-  var _f=window.fetch;
-  window.fetch=function(url,opts){
-    var isChat=typeof url==='string'&&/\/(chat|voice)$/.test(url);
-    if(isChat&&opts&&typeof opts.body==='string'){
-      try{
-        var b=JSON.parse(opts.body);
-        b.memory=localStorage.getItem('vektra_mem')||'';
-        opts=Object.assign({},opts,{body:JSON.stringify(b)});
-      }catch(e){}
-    }
-    var p=_f.call(this,url,opts);
-    if(isChat){p.then(function(r){r.clone().json().then(function(d){
-      if(d&&typeof d.memory==='string'&&d.memory)localStorage.setItem('vektra_mem',d.memory);
-    }).catch(function(){});}).catch(function(){});}
-    return p;
-  };
-  var _a=addMsg;
-  addMsg=function(text,role,htmlStr,domEl,extra){
-    _a.apply(this,arguments);
-    if(role==='bot'&&text&&!htmlStr&&!domEl){
-      var row=msgs.lastElementChild,b=row&&row.querySelector('.bubble');
-      if(b)b.innerHTML=fmt(text);
-    }
-  };
-})();
-`;
-
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -633,20 +498,36 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
+  // ─── POST /chat (Handles both text AND image uploads seamlessly) ───────────
   if (req.method === 'POST' && req.url === '/chat') {
     let body = '';
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { message, sessionId, memory: clientMemory } = JSON.parse(body);
-        if (!message?.trim()) {
+        const { message, image, mimeType, caption, sessionId, memory: clientMemory } = JSON.parse(body);
+        if (!message?.trim() && !image) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Message is required' }));
+          return res.end(JSON.stringify({ error: 'Message or image is required' }));
         }
+
         const sid = sessionId || 'default';
         if (!webSessions[sid]) webSessions[sid] = [];
         if (clientMemory && !memories[sid]) memories[sid] = String(clientMemory).slice(0, 1500);
 
+        // If an image is provided, send to Groq Vision!
+        if (image) {
+          const promptCaption = (caption || message || '').trim();
+          const reply = await askGroqVision(image, mimeType || 'image/jpeg', promptCaption);
+
+          webSessions[sid].push({ role: 'user', content: promptCaption ? `[Image: ${promptCaption}]` : 'I uploaded an image' });
+          webSessions[sid].push({ role: 'assistant', content: reply.slice(0, 600) });
+          webSessions[sid] = trimHistory(webSessions[sid]);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ reply, memory: memories[sid] || '' }));
+        }
+
+        // Standard text chat
         webSessions[sid].push({ role: 'user', content: message });
         learnFacts(sid, message);
         webSessions[sid] = trimHistory(webSessions[sid]);
@@ -848,11 +729,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ─── Serve index.html cleanly ──────────────────────────────────────────────
   res.writeHead(200, { 'Content-Type': 'text/html' });
   try {
-    let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-    html = html.replace('</head>', () => '<style id="vektra-ui-fix">' + UI_FIX_CSS + '</style>\n</head>');
-    html = html.replace('</body>', () => '<script id="vektra-ui-fix-js">' + UI_FIX_JS + '</script>\n</body>');
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     res.end(html);
   } catch (e) {
     res.end('<h1>index.html not found. Make sure it exists in the same folder.</h1>');
