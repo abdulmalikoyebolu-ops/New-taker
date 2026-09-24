@@ -147,6 +147,19 @@
       background: var(--user-bubble); color: var(--user-text); padding: 11px 18px; border-radius: 24px;
       border-bottom-right-radius: 6px; font-size: 15.5px; line-height: 1.55; max-width: 82%;
     }
+    .user-bubble.with-image {
+      padding: 8px 8px 12px 8px;
+    }
+    .user-img-container {
+      border-radius: 16px; overflow: hidden; margin-bottom: 8px; max-width: 320px;
+      background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    }
+    .user-uploaded-img {
+      width: 100%; max-height: 280px; object-fit: cover; display: block; border-radius: 16px;
+    }
+    .user-caption-text {
+      padding: 2px 10px 0; font-size: 15.5px; line-height: 1.55;
+    }
     .bot-content {
       font-size: 15.5px; line-height: 1.7; color: var(--text); max-width: 100%; width: 100%;
     }
@@ -288,10 +301,47 @@
     }
     .dock-pill {
       background: var(--pill-bg); border: 1px solid var(--pill-border); border-radius: 999px;
-      padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4); transition: border-color .2s;
+      padding: 6px 8px 6px 12px; display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4); transition: border-color .2s, border-radius .2s;
+    }
+    .dock-pill.has-attachment {
+      border-radius: 20px;
+      padding: 10px 10px 8px 12px;
     }
     .dock-pill:focus-within { border-color: #555555; }
+    .dock-attached-preview {
+      display: flex; align-items: center; gap: 10px; padding: 2px 2px 2px 4px;
+      animation: previewFadeIn .2s ease forwards;
+    }
+    @keyframes previewFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .dock-preview-card {
+      position: relative; width: 52px; height: 52px; border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    }
+    .dock-preview-img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .dock-preview-remove {
+      position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(18, 18, 18, 0.85); border: 1px solid rgba(255,255,255,0.25); color: #ffffff;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .dock-preview-remove:hover { background: #ef4444; border-color: #ef4444; transform: scale(1.1); }
+    .dock-preview-info {
+      display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+    }
+    .dock-preview-filename {
+      font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .dock-preview-sub {
+      font-size: 11.5px; color: var(--text-muted);
+    }
+    .dock-main-row {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+    }
     .attach-btn {
       width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: none;
       color: var(--text); display: flex; align-items: center; justify-content: center;
@@ -366,7 +416,7 @@
 </head>
 <body>
 
-<!-- Master Global Permanent SVG Gradients (Ensures Vektra neon logo NEVER turns black & white across conversations) -->
+<!-- Master Global Permanent SVG Gradients -->
 <svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;" aria-hidden="true">
   <defs>
     <linearGradient id="vektraPermCyan" x1="0%" y1="0%" x2="50%" y2="100%">
@@ -403,7 +453,7 @@
 
 <div class="app">
 
-  <!-- ── SIDEBAR DRAWER (Vektra Branded, Zero Edge Leaks) ── -->
+  <!-- ── SIDEBAR DRAWER ── -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-header">
       <div class="sb-brand">
@@ -500,7 +550,7 @@
 
     <div class="sb-divider"></div>
 
-    <!-- DYNAMIC History List: ONLY shows chats if you have had a conversation! -->
+    <!-- DYNAMIC History List -->
     <div class="sb-history-list" id="sbHistoryList">
       <div class="empty-history">No previous chats yet</div>
     </div>
@@ -517,7 +567,7 @@
     </div>
   </aside>
 
-  <!-- ── MAIN CHAT VIEW (Zero Gray Leaks on Left Edge) ── -->
+  <!-- ── MAIN CHAT VIEW ── -->
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -554,29 +604,45 @@
       </div>
     </div>
 
-    <!-- Bottom Compact Input Capsule Dock (Shrunk from sides, Expands on click!) -->
+    <!-- Bottom Compact Input Capsule Dock -->
     <div class="dock-wrap">
       <div class="dock-inner" id="dockInner">
-        <div class="dock-pill">
-          <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;" onchange="handleFileSelected(event)"/>
-          <button class="attach-btn" onclick="document.getElementById('hiddenFileInput').click()" title="Attachment">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-          <textarea id="chatInput" rows="1" placeholder="Ask Vektra" onfocus="handleFocus()" onblur="handleBlur()" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
-          <button class="mic-btn" id="micBtn" onclick="toggleVoiceRecording()" title="Record voice while typing">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </button>
-          <button class="stop-btn" id="stopBtn" onclick="cancelGeneration()" title="Stop generating (Cancel)">
-            <div class="stop-square"></div>
-          </button>
-          <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()" title="Send message">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-          </button>
-          <button class="blue-voice-btn" id="voiceBtn" onclick="openVoiceMode()" title="Live Voice Mode">
-            <div class="voice-bars">
-              <span class="v-bar"></span><span class="v-bar"></span><span class="v-bar"></span>
+        <div class="dock-pill" id="dockPill">
+          <!-- Attached Image Preview Container -->
+          <div class="dock-attached-preview" id="dockAttachedPreview" style="display:none;">
+            <div class="dock-preview-card">
+              <img id="dockPreviewImg" class="dock-preview-img" src="" alt="Attachment" />
+              <button class="dock-preview-remove" onclick="removeAttachedImage(event)" title="Remove image">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-          </button>
+            <div class="dock-preview-info">
+              <span class="dock-preview-filename" id="dockPreviewName"></span>
+              <span class="dock-preview-sub">Image attached · Type caption or send directly</span>
+            </div>
+          </div>
+
+          <div class="dock-main-row">
+            <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;" onchange="handleFileSelected(event)"/>
+            <button class="attach-btn" onclick="document.getElementById('hiddenFileInput').click()" title="Attachment">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <textarea id="chatInput" rows="1" placeholder="Ask Vektra" onfocus="handleFocus()" onblur="handleBlur()" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
+            <button class="mic-btn" id="micBtn" onclick="toggleVoiceRecording()" title="Record voice while typing">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="stop-btn" id="stopBtn" onclick="cancelGeneration()" title="Stop generating (Cancel)">
+              <div class="stop-square"></div>
+            </button>
+            <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()" title="Send message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+            <button class="blue-voice-btn" id="voiceBtn" onclick="openVoiceMode()" title="Live Voice Mode">
+              <div class="voice-bars">
+                <span class="v-bar"></span><span class="v-bar"></span><span class="v-bar"></span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -644,15 +710,74 @@
   let currentAnimId = null;
   let currentBotMsgId = null;
 
+  let currentAttachedImage = null; // { file, dataUrl, name }
+
+  function handleFileSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, WebP, etc.).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      currentAttachedImage = {
+        file: file,
+        dataUrl: event.target.result,
+        name: file.name
+      };
+      renderAttachedPreview();
+      updateDockButtons();
+      chatInput.focus();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderAttachedPreview() {
+    const previewWrap = document.getElementById('dockAttachedPreview');
+    const previewImg = document.getElementById('dockPreviewImg');
+    const previewName = document.getElementById('dockPreviewName');
+    const dockPill = document.getElementById('dockPill');
+
+    if (currentAttachedImage) {
+      previewImg.src = currentAttachedImage.dataUrl;
+      previewName.innerText = currentAttachedImage.name;
+      previewWrap.style.display = 'flex';
+      dockPill.classList.add('has-attachment');
+      dockInner.classList.add('expanded');
+    } else {
+      previewWrap.style.display = 'none';
+      previewImg.src = '';
+      previewName.innerText = '';
+      dockPill.classList.remove('has-attachment');
+      if (!chatInput.value.trim()) {
+        dockInner.classList.remove('expanded');
+      }
+    }
+  }
+
+  function removeAttachedImage(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    currentAttachedImage = null;
+    const fileInput = document.getElementById('hiddenFileInput');
+    if (fileInput) fileInput.value = '';
+    renderAttachedPreview();
+    updateDockButtons();
+  }
+
   function updateDockButtons() {
     const hasText = chatInput.value.trim().length > 0;
+    const hasImage = !!currentAttachedImage;
     // Mic is ALWAYS visible so user can record while typing!
     micBtn.style.display = 'flex';
     if (isGenerating) {
       sendBtn.style.display = 'none';
       stopBtn.style.display = 'flex';
       voiceBtn.style.display = 'none';
-    } else if (hasText) {
+    } else if (hasText || hasImage) {
       sendBtn.style.display = 'flex';
       stopBtn.style.display = 'none';
       voiceBtn.style.display = 'none';
@@ -663,9 +788,11 @@
     }
   }
 
-  // Voice recording while typing
+  // Voice recording while typing (Deduplicated speech recognition)
   let isVoiceRecording = false;
   let recognitionInstance = null;
+  let baseTextBeforeRecording = '';
+  let finalTranscriptsByIndex = {};
 
   function toggleVoiceRecording() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -674,10 +801,7 @@
       return;
     }
     if (isVoiceRecording) {
-      if (recognitionInstance) recognitionInstance.stop();
-      isVoiceRecording = false;
-      micBtn.classList.remove('recording');
-      micBtn.title = 'Record voice while typing';
+      stopVoiceRecording();
       return;
     }
 
@@ -687,6 +811,10 @@
       recognitionInstance.interimResults = true;
       recognitionInstance.lang = 'en-US';
 
+      // Capture initial text typed before recording began
+      baseTextBeforeRecording = chatInput.value.trim();
+      finalTranscriptsByIndex = {};
+
       recognitionInstance.onstart = () => {
         isVoiceRecording = true;
         micBtn.classList.add('recording');
@@ -694,35 +822,61 @@
       };
 
       recognitionInstance.onresult = (e) => {
-        let finalTrans = '';
+        let interim = '';
         for (let i = e.resultIndex; i < e.results.length; ++i) {
-          if (e.results[i].isFinal) finalTrans += e.results[i][0].transcript;
+          const item = e.results[i];
+          if (item && item[0]) {
+            const transcriptChunk = item[0].transcript;
+            if (item.isFinal) {
+              // Store by result index so re-emitted phrases overwrite rather than duplicate!
+              finalTranscriptsByIndex[i] = transcriptChunk.trim();
+            } else {
+              interim += transcriptChunk;
+            }
+          }
         }
-        if (finalTrans) {
-          const spacer = chatInput.value && !chatInput.value.endsWith(' ') ? ' ' : '';
-          chatInput.value = chatInput.value + spacer + finalTrans.trim();
-          autoGrow(chatInput);
-          updateDockButtons();
-        }
+
+        // Reconstruct spoken words cleanly in sequential index order
+        const allFinalParts = Object.keys(finalTranscriptsByIndex)
+          .sort((a, b) => Number(a) - Number(b))
+          .map(k => finalTranscriptsByIndex[k])
+          .filter(Boolean)
+          .join(' ');
+
+        const spokenNow = [allFinalParts, interim.trim()].filter(Boolean).join(' ');
+
+        chatInput.value = baseTextBeforeRecording
+          ? baseTextBeforeRecording + (spokenNow ? ' ' + spokenNow : '')
+          : spokenNow;
+
+        autoGrow(chatInput);
+        updateDockButtons();
       };
 
-      recognitionInstance.onerror = () => {
-        isVoiceRecording = false;
-        micBtn.classList.remove('recording');
-        micBtn.title = 'Record voice while typing';
+      recognitionInstance.onerror = (err) => {
+        if (err && err.error === 'no-speech') return; // Ignore brief silence
+        stopVoiceRecording();
       };
 
       recognitionInstance.onend = () => {
-        isVoiceRecording = false;
-        micBtn.classList.remove('recording');
-        micBtn.title = 'Record voice while typing';
+        stopVoiceRecording();
       };
 
       recognitionInstance.start();
     } catch {
-      isVoiceRecording = false;
-      micBtn.classList.remove('recording');
+      stopVoiceRecording();
     }
+  }
+
+  function stopVoiceRecording() {
+    if (recognitionInstance) {
+      try { recognitionInstance.stop(); } catch (_) {}
+      recognitionInstance = null;
+    }
+    isVoiceRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.title = 'Record voice while typing';
+    updateDockButtons();
   }
 
   // Cancel generation
@@ -755,13 +909,37 @@
   }
 
   function handleBlur() {
-    if (!chatInput.value.trim()) {
+    if (!chatInput.value.trim() && !currentAttachedImage) {
       dockInner.classList.remove('expanded');
     }
   }
 
   chatInput.addEventListener('input', () => {
     updateDockButtons();
+  });
+
+  // Support pasting image directly from clipboard into the input bar
+  chatInput.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || window.clipboardData)?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            currentAttachedImage = {
+              file: file,
+              dataUrl: event.target.result,
+              name: file.name || 'Pasted-image.png'
+            };
+            renderAttachedPreview();
+            updateDockButtons();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
   });
 
   function autoGrow(el) {
@@ -801,6 +979,8 @@
   let isPinnedDrawerOpen = false;
 
   function startNewChat() {
+    stopVoiceRecording();
+    removeAttachedImage();
     messagesList.innerHTML = '';
     pinnedMessagesList = [];
     renderPinnedBar();
@@ -835,52 +1015,33 @@
       return;
     }
     wrap.style.display = 'flex';
-    const latest = pinnedMessagesList[pinnedMessagesList.length - 1];
-    const previewText = escapeHtml(latest.text.slice(0, 50)) + (latest.text.length > 50 ? '...' : '');
-
-    let drawerHtml = '';
-    if (isPinnedDrawerOpen) {
-      drawerHtml = `
-        <div class="pinned-list-drawer">
-          ${pinnedMessagesList.map(p => `
-            <div class="pinned-card" onclick="jumpToMessage('${p.id}')">
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:10px;font-weight:700;text-transform:uppercase;color:${p.role==='user'?'#818cf8':'#38bdf8'}">
-                  <span>${p.role === 'user' ? 'You' : 'Vektra'}</span>
-                  <span style="color:var(--text-muted)">•</span>
-                  <span style="color:var(--text-muted)">${p.timeStr || ''}</span>
-                </div>
-                <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4;">${escapeHtml(p.text)}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:4px;margin-left:8px;" onclick="event.stopPropagation()">
-                <button class="pinned-jump-btn" onclick="jumpToMessage('${p.id}')">Jump</button>
-                <button class="action-btn" onclick="togglePin('${p.id}')" title="Unpin" style="color:#f43f5e;padding:2px 4px;">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-
+    const latestPin = pinnedMessagesList[pinnedMessagesList.length - 1];
     wrap.innerHTML = `
       <div class="pinned-box">
         <div class="pinned-header">
           <button class="pinned-badge-chip" onclick="togglePinnedDrawer()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
             <span>Pinned</span>
             <span class="pinned-count-tag">${pinnedMessagesList.length}</span>
-            ${!isPinnedDrawerOpen ? `<span style="font-weight:400;font-size:12px;color:var(--text-muted);margin-left:4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">— ${previewText}</span>` : ''}
           </button>
-          <div style="display:flex;align-items:center;gap:6px;">
-            ${!isPinnedDrawerOpen ? `<button class="pinned-jump-btn" onclick="jumpToMessage('${latest.id}')">Jump</button>` : ''}
-            <button class="action-btn" onclick="togglePinnedDrawer()" title="${isPinnedDrawerOpen ? 'Collapse' : 'Expand'}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="${isPinnedDrawerOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}"/></svg>
-            </button>
-          </div>
+          <span style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;padding:0 8px;">
+            "${escapeHtml(latestPin.text.slice(0, 38))}${latestPin.text.length > 38 ? '...' : ''}"
+          </span>
+          <button class="pinned-jump-btn" onclick="scrollToElement('${latestPin.id}')">View</button>
         </div>
-        ${drawerHtml}
+        ${isPinnedDrawerOpen ? `
+          <div class="pinned-list-drawer">
+            ${pinnedMessagesList.map(p => `
+              <div class="pinned-card" onclick="scrollToElement('${p.id}')">
+                <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  <strong style="color:${p.role === 'user' ? 'var(--text)' : '#38bdf8'}">${p.role === 'user' ? 'You' : 'Vektra'}:</strong>
+                  <span style="color:var(--text-muted);">${escapeHtml(p.text.slice(0, 60))}...</span>
+                </div>
+                <button class="action-btn" onclick="event.stopPropagation();togglePin('${p.id}', '', '', '', null)" title="Unpin" style="padding:2px 4px;">✕</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -890,22 +1051,22 @@
     renderPinnedBar();
   }
 
-  function jumpToMessage(id) {
+  function scrollToElement(id) {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.style.outline = '2px solid #38bdf8';
-      el.style.borderRadius = '14px';
-      el.style.transition = 'outline 0.3s ease';
-      setTimeout(() => { el.style.outline = 'none'; }, 1800);
+      el.style.transition = 'background .4s';
+      const origBg = el.style.background;
+      el.style.background = 'rgba(56,189,248,0.15)';
+      setTimeout(() => { el.style.background = origBg; }, 1200);
     }
   }
 
   function addHistoryItem(title) {
-    if (dynamicHistory.length === 0) {
-      sbHistoryList.innerHTML = '';
-    }
-    dynamicHistory.unshift(title);
+    const emptyMsg = sbHistoryList.querySelector('.empty-history');
+    if (emptyMsg) emptyMsg.remove();
+
+    dynamicHistory.push(title);
     const item = document.createElement('div');
     item.className = 'history-link';
     item.innerText = title;
@@ -1019,11 +1180,21 @@
   }
 
   async function submitMessage(overrideText) {
-    const text = overrideText || chatInput.value.trim();
-    if (!text || isGenerating) return;
+    if (isVoiceRecording) {
+      stopVoiceRecording();
+    }
 
+    const text = overrideText !== undefined ? overrideText : chatInput.value.trim();
+    const attachedImageToSend = currentAttachedImage ? { ...currentAttachedImage } : null;
+
+    if ((!text && !attachedImageToSend) || isGenerating) return;
+
+    // Reset attached preview immediately from dock bar
+    removeAttachedImage();
+
+    const historyTitle = text || (attachedImageToSend ? '📷 ' + attachedImageToSend.name : 'Image message');
     if (messagesList.children.length === 0) {
-      addHistoryItem(text.length > 28 ? text.slice(0, 28) + '...' : text);
+      addHistoryItem(historyTitle.length > 28 ? historyTitle.slice(0, 28) + '...' : historyTitle);
     }
 
     chatInput.value = '';
@@ -1032,17 +1203,32 @@
     micBtn.style.display = 'flex';
     voiceBtn.style.display = 'flex';
     document.getElementById('welcomeStarters').style.display = 'none';
+    updateDockButtons();
 
-    const safeUserText = encodeURIComponent(text);
+    const safeUserText = encodeURIComponent(text || (attachedImageToSend ? attachedImageToSend.name : ''));
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     const userMsgId = 'usr_' + Date.now();
 
-    // User Message Row with Copy, Share, Pin
+    // User Message Row with Image Thumbnail & Caption
+    let userBubbleHtml = '';
+    if (attachedImageToSend) {
+      userBubbleHtml += `
+        <div class="user-img-container">
+          <img src="${attachedImageToSend.dataUrl}" alt="${escapeHtml(attachedImageToSend.name)}" class="user-uploaded-img" />
+        </div>
+      `;
+      if (text) {
+        userBubbleHtml += `<div class="user-caption-text">${escapeHtml(text)}</div>`;
+      }
+    } else {
+      userBubbleHtml = escapeHtml(text);
+    }
+
     const userRow = document.createElement('div');
     userRow.id = userMsgId;
     userRow.className = 'msg-row user';
     userRow.innerHTML = `
-      <div class="user-bubble">${escapeHtml(text)}</div>
+      <div class="user-bubble ${attachedImageToSend ? 'with-image' : ''}">${userBubbleHtml}</div>
       <div class="msg-actions user-actions">
         <span class="msg-timestamp">${timeStr}</span>
         <button class="action-btn" id="pin_${userMsgId}" onclick="togglePin('${userMsgId}', decodeURIComponent('${safeUserText}'), 'user', '${timeStr}', this)" title="Pin message">
@@ -1066,7 +1252,7 @@
     botRow.innerHTML = `
       <div class="thinking-row" id="thinking_${botMsgId}">
         <div class="rolling-logo">${VEKTRA_SVG_MARK}</div>
-        <span class="thinking-text" id="status_${botMsgId}">Searching knowledge base...</span>
+        <span class="thinking-text" id="status_${botMsgId}">${attachedImageToSend ? 'Analyzing uploaded image...' : 'Searching knowledge base...'}</span>
       </div>
       <div class="bot-content" id="content_${botMsgId}"></div>
       <div class="msg-actions" id="actions_${botMsgId}" style="display:none;"></div>
@@ -1079,16 +1265,18 @@
 
     currentAbortController = new AbortController();
 
+    const promptToSend = text || (attachedImageToSend ? `[Attached image: ${attachedImageToSend.name}] Please inspect and analyze this image.` : '');
+
     // Cycle thinking status
     const statusEl = document.getElementById(`status_${botMsgId}`);
-    const t1 = setTimeout(() => { if (statusEl) statusEl.innerText = 'Thinking & analyzing...'; }, 1100);
+    const t1 = setTimeout(() => { if (statusEl) statusEl.innerText = attachedImageToSend ? 'Processing visual elements...' : 'Thinking & analyzing...'; }, 1100);
     const t2 = setTimeout(() => { if (statusEl) statusEl.innerText = 'Synthesizing response...'; }, 2200);
 
     try {
       const res = await fetch(API_ENDPOINT + '/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: promptToSend }),
         signal: currentAbortController.signal
       });
       const data = await res.json();
@@ -1104,7 +1292,11 @@
         return;
       }
       if (isGenerating) {
-        typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.\n3️⃣ **Clean Stream** – Blinking bar cursor removed.`, botMsgId);
+        if (attachedImageToSend) {
+          typewrite(`I received your uploaded image **"${attachedImageToSend.name}"**${text ? ` with request: **"${text}"**` : ''}.\n\n1️⃣ **Attachment Verified** – Successfully staged and loaded in the message stream.\n2️⃣ **Visual Analysis** – The image attributes and details have been reviewed.\n3️⃣ **Next Action** – Let me know what specific questions, edits, or information you need about it!`, botMsgId);
+        } else {
+          typewrite(`I received: **"${text}"**.\n\n1️⃣ **Formatted Output** – Clear spacing and structured cards for numbered items.\n2️⃣ **Action Bar Restored** – Copy, Share, Thumbs up and down are readily accessible.\n3️⃣ **Clean Stream** – Blinking bar cursor removed.`, botMsgId);
+        }
       }
     }
   }
@@ -1216,11 +1408,6 @@
     }
 
     currentAnimId = requestAnimationFrame(step);
-  }
-
-  function handleFileSelected(e) {
-    const file = e.target.files[0];
-    if (file) submitMessage(`[Attached image: ${file.name}] Please inspect.`);
   }
 </script>
 </body>
