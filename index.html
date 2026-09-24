@@ -7,16 +7,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #000000; --sidebar-bg: #000000; --surface: #141414; --surface-h: #1f1f1f;
+      --border: #222222; --text: #ececec; --text-muted: #8e8ea0; --accent: #2563eb;
+      --pill-bg: #212121; --pill-border: #2e2e2e; --user-bubble: #212121; --user-text: #ffffff;
+    }
+    body.light {
+      --bg: #f7f7f8; --sidebar-bg: #ffffff; --surface: #f0f0f0; --surface-h: #e5e5e5;
+      --border: #e2e2e2; --text: #0d0d0d; --text-muted: #666666; --accent: #2563eb;
+      --pill-bg: #ffffff; --pill-border: #e0e0e0; --user-bubble: #e5e5ea; --user-text: #000000;
+    }
     html, body {
-      height: 100%; height: 100dvh; background: #000000; color: #ececec;
+      height: 100%; height: 100dvh; background: var(--bg); color: var(--text);
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; overflow: hidden;
-      -webkit-font-smoothing: antialiased;
+      -webkit-font-smoothing: antialiased; transition: background .2s, color .2s;
     }
     .app { display: flex; width: 100vw; height: 100vh; height: 100dvh; position: relative; }
 
-    /* ─── SIDEBAR DRAWER ─── */
+    /* ─── SIDEBAR DRAWER (Zero shadow leaks on left edge!) ─── */
     .drawer-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
       backdrop-filter: blur(4px); z-index: 90; transition: opacity .3s;
@@ -24,39 +35,71 @@
     .drawer-backdrop.active { display: block; }
     .sidebar {
       position: fixed; top: 0; bottom: 0; left: 0; width: 280px; max-width: 85vw;
-      background: #171717; border-right: 1px solid #262626; z-index: 100;
+      background: var(--sidebar-bg); border-right: 1px solid var(--border); z-index: 100;
       display: flex; flex-direction: column; transform: translateX(-100%);
-      transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+      visibility: hidden; pointer-events: none; box-shadow: none;
+      transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1), visibility .3s, background .2s;
     }
-    .sidebar.open { transform: translateX(0); }
-    .sb-top { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #262626; }
-    .sb-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
-    .sb-logo { width: 30px; height: 30px; border-radius: 8px; background: #212121; border: 1px solid #333; padding: 4px; display: flex; align-items: center; justify-content: center; }
-    .sb-logo img { width: 100%; height: 100%; object-fit: contain; }
-    .sb-actions { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .new-chat-btn {
-      width: 100%; display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 14px; border-radius: 12px; background: #212121; border: 1px solid #2e2e2e;
-      color: #fff; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .2s;
+    .sidebar.open {
+      transform: translateX(0);
+      visibility: visible; pointer-events: auto;
+      box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
-    .new-chat-btn:hover { background: #2a2a2a; }
-    .search-box {
-      width: 100%; padding: 8px 12px; border-radius: 10px; background: #212121;
-      border: 1px solid transparent; color: #fff; font-size: 12.5px; outline: none;
+    .sb-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 18px 12px;
     }
-    .search-box:focus { border-color: #383838; }
-    .history-list { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
-    .history-group-title { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #737373; text-transform: uppercase; padding: 8px 6px 4px; }
-    .history-item {
-      padding: 8px 10px; border-radius: 10px; font-size: 13px; color: #d4d4d4;
+    .sb-brand { display: flex; align-items: center; gap: 9px; }
+    .sb-logo-box {
+      width: 28px; height: 28px; border-radius: 7px; background: #212121;
+      border: 1px solid #333; display: flex; align-items: center; justify-content: center; padding: 4px;
+    }
+    .sb-logo-box img { width: 100%; height: 100%; object-fit: contain; }
+    .sb-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+    .sb-search-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--surface);
+      border: none; color: var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s;
+    }
+    .sb-search-btn:hover { background: var(--surface-h); }
+    .sb-nav-list { display: flex; flex-direction: column; padding: 4px 10px; gap: 2px; }
+    .sb-nav-item {
+      display: flex; align-items: center; gap: 14px; padding: 9px 12px; border-radius: 12px;
+      color: var(--text); font-size: 15px; font-weight: 500; text-decoration: none;
+      background: none; border: none; cursor: pointer; text-align: left; font-family: inherit;
+      transition: background .15s;
+    }
+    .sb-nav-item:hover { background: var(--surface); }
+    .sb-nav-item svg { color: var(--text-muted); width: 20px; height: 20px; flex-shrink: 0; }
+    .sb-divider { margin: 8px 18px 12px; border-top: 1px solid var(--border); }
+    
+    /* Dynamic History List (Initially empty!) */
+    .sb-history-list { flex: 1; overflow-y: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .empty-history { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 10px; }
+    .history-link {
+      padding: 8px 10px; border-radius: 8px; font-size: 14px; color: var(--text);
       cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-      display: flex; align-items: center; gap: 8px; transition: background .15s;
+      transition: background .15s;
     }
-    .history-item:hover { background: #212121; color: #fff; }
-    .sb-bottom { padding: 12px 14px; border-top: 1px solid #262626; margin-top: auto; }
-    .user-card { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; cursor: pointer; }
-    .user-card:hover { background: #212121; }
-    .user-av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .history-link:hover { background: var(--surface); }
+
+    .sb-footer {
+      padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+      border-top: 1px solid var(--border);
+    }
+    .blue-chat-btn {
+      display: flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 999px;
+      background: var(--accent); border: none; color: #fff; font-size: 14.5px; font-weight: 600;
+      cursor: pointer; transition: transform .15s, background .15s; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .blue-chat-btn:hover { background: #1d4ed8; }
+    .blue-chat-btn:active { transform: scale(0.95); }
+    .theme-toggle-btn {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--surface);
+      border: none; color: var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s;
+    }
+    .theme-toggle-btn:hover { background: var(--surface-h); }
 
     /* ─── MAIN CHAT VIEW ─── */
     .main { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
@@ -65,18 +108,20 @@
       padding: 0 16px; z-index: 20; shrink: 0;
     }
     .btn-circle {
-      width: 40px; height: 40px; border-radius: 50%; background: #212121; border: none;
-      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: none;
+      color: var(--text); display: flex; align-items: center; justify-content: center;
       cursor: pointer; transition: transform .15s, background .15s;
     }
-    .btn-circle:hover { background: #2a2a2a; color: #fff; }
+    .btn-circle:hover { background: var(--surface-h); }
     .btn-circle:active { transform: scale(0.92); }
     .get-plus-pill {
       display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px;
       background: #1b2533; border: 1px solid rgba(43,76,126,0.4); color: #5ba2f8;
       font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
     }
-    .get-plus-pill:hover { background: #213042; }
+    body.light .get-plus-pill {
+      background: #e5efff; border-color: #bcd6ff; color: #1d6fe5;
+    }
     .get-plus-pill:active { transform: scale(0.95); }
 
     /* ─── CHAT AREA ─── */
@@ -88,12 +133,11 @@
     .welcome-starters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .starter-btn {
       display: flex; align-items: center; gap: 12px; background: none; border: none;
-      color: #e5e5e5; font-size: 15px; font-family: inherit; padding: 8px 4px;
-      cursor: pointer; text-align: left; transition: color .15s;
+      color: var(--text); font-size: 15px; font-family: inherit; padding: 8px 4px;
+      cursor: pointer; text-align: left; transition: opacity .15s;
     }
-    .starter-btn:hover { color: #ffffff; }
-    .starter-btn svg { color: #8e8ea0; transition: color .15s; }
-    .starter-btn:hover svg { color: #ffffff; }
+    .starter-btn:hover { opacity: 0.8; }
+    .starter-btn svg { color: var(--text-muted); width: 20px; height: 20px; }
 
     /* Messages */
     .msg-group { display: flex; flex-direction: column; gap: 18px; padding-top: 10px; }
@@ -102,57 +146,56 @@
     .msg-row.user { align-items: flex-end; }
     .msg-row.bot { align-items: flex-start; }
     .user-bubble {
-      background: #212121; color: #fff; padding: 12px 18px; border-radius: 24px;
+      background: var(--user-bubble); color: var(--user-text); padding: 11px 18px; border-radius: 24px;
       border-bottom-right-radius: 6px; font-size: 15.5px; line-height: 1.55; max-width: 82%;
     }
-    .bot-content { font-size: 15.5px; line-height: 1.65; color: #ececec; max-width: 100%; width: 100%; }
-    .bot-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .bot-logo-sq { width: 24px; height: 24px; border-radius: 6px; background: #212121; border: 1px solid #333; padding: 3px; display: flex; align-items: center; justify-content: center; }
-    .bot-logo-sq img { width: 100%; height: 100%; object-fit: contain; }
-    .cursor-blink { display: inline-block; width: 6px; height: 16px; background: #fff; margin-left: 4px; animation: blink 1s infinite; vertical-align: middle; }
+    .bot-content { font-size: 15.5px; line-height: 1.65; color: var(--text); max-width: 100%; width: 100%; }
+    .cursor-blink { display: inline-block; width: 6px; height: 16px; background: currentColor; margin-left: 4px; animation: blink 1s infinite; vertical-align: middle; }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-    /* Code Block */
-    .code-card { margin: 12px 0; border-radius: 12px; overflow: hidden; border: 1px solid #333; background: #0d0d0d; }
-    .code-top { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; background: #1a1a1a; color: #8e8ea0; }
-    .code-body { padding: 12px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #f4f4f5; line-height: 1.6; }
-
-    /* ─── BOTTOM CHATGPT INPUT DOCK ─── */
+    /* ─── COMPACT INPUT BAR WITH EXPANSION ANIMATION ─── */
     .dock-wrap {
       position: absolute; bottom: 0; left: 0; right: 0; padding: 0 16px 16px;
       display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 30;
     }
-    .dock-inner { width: 100%; max-width: 680px; pointer-events: auto; }
-    .dock-pill {
-      background: #212121; border: 1px solid #2e2e2e; border-radius: 999px;
-      padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.6); transition: border-color .2s;
+    .dock-inner {
+      width: 82%; max-width: 500px; pointer-events: auto;
+      transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .dock-pill:focus-within { border-color: #454545; }
+    .dock-inner:focus-within,
+    .dock-inner.expanded {
+      width: 96%; max-width: 680px;
+    }
+    .dock-pill {
+      background: var(--pill-bg); border: 1px solid var(--pill-border); border-radius: 999px;
+      padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4); transition: border-color .2s;
+    }
+    .dock-pill:focus-within { border-color: #555555; }
     .attach-btn {
-      width: 36px; height: 36px; border-radius: 50%; background: #2f2f2f; border: none;
-      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: none;
+      color: var(--text); display: flex; align-items: center; justify-content: center;
       cursor: pointer; transition: all .15s; shrink: 0;
     }
-    .attach-btn:hover { background: #3a3a3a; color: #fff; }
+    .attach-btn:hover { background: var(--surface-h); }
     .attach-btn:active { transform: scale(0.9); }
     #chatInput {
-      flex: 1; background: transparent; border: none; outline: none; color: #fff;
+      flex: 1; background: transparent; border: none; outline: none; color: var(--text);
       font-family: inherit; font-size: 15.5px; resize: none; max-height: 140px; padding: 6px 0;
     }
-    #chatInput::placeholder { color: #8e8ea0; }
+    #chatInput::placeholder { color: var(--text-muted); }
     .mic-btn {
       width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
-      color: #d4d4d4; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); display: flex; align-items: center; justify-content: center;
       cursor: pointer; transition: all .15s; shrink: 0;
     }
-    .mic-btn:hover { background: #2f2f2f; color: #fff; }
+    .mic-btn:hover { background: var(--surface); color: var(--text); }
     .blue-voice-btn {
-      width: 36px; height: 36px; border-radius: 50%; background: #2b82f6; border: none;
+      width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: none;
       color: #fff; display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 4px 14px rgba(43,130,246,0.35); transition: transform .15s; shrink: 0;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.35); transition: transform .15s; shrink: 0;
     }
-    .blue-voice-btn:hover { background: #2575e0; }
+    .blue-voice-btn:hover { background: #1d4ed8; }
     .blue-voice-btn:active { transform: scale(0.9); }
     .voice-bars { display: flex; align-items: center; gap: 2px; height: 16px; }
     .v-bar { width: 2.5px; background: #fff; border-radius: 2px; animation: bounceBar 1.2s infinite ease-in-out; }
@@ -161,13 +204,13 @@
     .v-bar:nth-child(3) { height: 8px; animation-delay: 0.36s; }
     @keyframes bounceBar { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1.1); } }
     .send-arrow-btn {
-      width: 36px; height: 36px; border-radius: 50%; background: #ffffff; border: none;
-      color: #000; display: none; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%; background: var(--text); border: none;
+      color: var(--bg); display: none; align-items: center; justify-content: center;
       cursor: pointer; transition: transform .15s; shrink: 0; font-weight: 700;
     }
     .send-arrow-btn:active { transform: scale(0.9); }
 
-    /* ─── FULLSCREEN LIVE VOICE MODE OVERLAY ─── */
+    /* ─── LIVE VOICE MODE OVERLAY ─── */
     .voice-overlay {
       display: none; position: fixed; inset: 0; background: #000000; z-index: 200;
       flex-direction: column; justify-content: space-between; padding: 24px;
@@ -188,78 +231,90 @@
 
 <div class="app">
 
-  <!-- ── SIDEBAR DRAWER ── -->
+  <!-- ── SIDEBAR DRAWER (Vektra Branded, Zero Edge Leaks) ── -->
   <aside class="sidebar" id="sidebar">
-    <div class="sb-top">
+    <div class="sb-header">
       <div class="sb-brand">
-        <div class="sb-logo">
+        <div class="sb-logo-box">
           <img src="data:image/png;base64,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" alt="Vektra"/>
         </div>
-        <span>Vektra AI</span>
+        <span class="sb-title">Vektra</span>
       </div>
-      <button onclick="closeSidebar()" style="background:none;border:none;color:#8e8ea0;cursor:pointer;font-size:16px;">✕</button>
-    </div>
-
-    <div class="sb-actions">
-      <button class="new-chat-btn" onclick="startNewChat()">
-        <span>+ New chat</span>
-        <span style="color:#737373;">⌘K</span>
+      <button class="sb-search-btn" onclick="alert('Search conversations')" title="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
-      <input type="text" class="search-box" placeholder="Search conversations..."/>
     </div>
 
-    <div class="history-list">
-      <div class="history-group-title">Today</div>
-      <div class="history-item" onclick="closeSidebar()">Web UI Prototype Analysis</div>
-      <div class="history-item" onclick="closeSidebar()">TypeScript Systems Architecture</div>
-      <div class="history-group-title">Yesterday</div>
-      <div class="history-item" onclick="closeSidebar()">Vision Diagnostics Flow</div>
-      <div class="history-group-title">Previous 7 Days</div>
-      <div class="history-item" onclick="closeSidebar()">Design System Tokens</div>
+    <!-- Nav Items -->
+    <div class="sb-nav-list">
+      <button class="sb-nav-item" onclick="closeSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>Images</span>
+      </button>
+      <button class="sb-nav-item" onclick="closeSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Library</span>
+      </button>
+      <button class="sb-nav-item" onclick="closeSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Projects</span>
+      </button>
+      <button class="sb-nav-item" onclick="closeSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Scheduled</span>
+      </button>
+      <button class="sb-nav-item" onclick="closeSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.5 12.572l-7.5 7.428-7.5-7.428m15-4.572l-7.5 7.428-7.5-7.428"/></svg>
+        <span>Plugins</span>
+      </button>
     </div>
 
-    <div class="sb-bottom">
-      <div class="user-card" onclick="alert('Vektra Pro: Unlimited tokens active')">
-        <div class="user-av">V</div>
-        <div>
-          <div style="font-size:13px;font-weight:600;">Vektra Pro</div>
-          <div style="font-size:11px;color:#737373;">Upgrade workspace</div>
-        </div>
-      </div>
+    <div class="sb-divider"></div>
+
+    <!-- DYNAMIC History List: ONLY shows chats if you have had a conversation! -->
+    <div class="sb-history-list" id="sbHistoryList">
+      <div class="empty-history">No previous chats yet</div>
+    </div>
+
+    <!-- Bottom: Blue [✏️ Chat] button + Theme switch -->
+    <div class="sb-footer">
+      <button class="blue-chat-btn" onclick="startNewChat()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
     </div>
   </aside>
 
-  <!-- ── MAIN CHAT VIEW (Identical to ChatGPT) ── -->
+  <!-- ── MAIN CHAT VIEW (Zero Gray Leaks on Left Edge) ── -->
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:10px;">
-        <!-- Circular Menu Button (=) -->
         <button class="btn-circle" onclick="openSidebar()" title="Menu">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/></svg>
         </button>
-        <!-- ChatGPT 'Get Plus' Pill -->
-        <button class="get-plus-pill" onclick="alert('Vektra Plus Enterprise: Unlimited reasoning unlocked!')">
+        <button class="get-plus-pill" onclick="alert('Vektra Plus Enterprise: Unlimited reasoning active')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
           Get Plus
         </button>
       </div>
-      <!-- Right Circular Compose Button -->
       <button class="btn-circle" onclick="startNewChat()" title="New Chat">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </button>
     </header>
 
     <!-- Message Scroller Area -->
     <div class="chat-scroll" id="chatScroller">
       <div class="chat-flow" id="chatFlow">
-        <!-- Starter Rows (From Screenshot) -->
         <div class="welcome-starters" id="welcomeStarters">
           <button class="starter-btn" onclick="document.getElementById('hiddenFileInput').click()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             Create an image or sticker
           </button>
           <button class="starter-btn" onclick="submitMessage('Write a clean executive summary')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
             Write or edit
           </button>
         </div>
@@ -267,29 +322,23 @@
       </div>
     </div>
 
-    <!-- Bottom ChatGPT Input Capsule Dock -->
+    <!-- Bottom Compact Input Capsule Dock (Shrunk from sides, Expands on click!) -->
     <div class="dock-wrap">
-      <div class="dock-inner">
+      <div class="dock-inner" id="dockInner">
         <div class="dock-pill">
-          <!-- Hidden File Input -->
           <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;" onchange="handleFileSelected(event)"/>
-          <!-- '+' Attachment Button -->
           <button class="attach-btn" onclick="document.getElementById('hiddenFileInput').click()" title="Attachment">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
-          <!-- Input -->
-          <textarea id="chatInput" rows="1" placeholder="Ask Vektra" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
-          <!-- Microphone Button -->
-          <button class="mic-btn" id="micBtn" onclick="toggleDictation()" title="Voice Dictation">
+          <textarea id="chatInput" rows="1" placeholder="Ask Vektra" onfocus="handleFocus()" onblur="handleBlur()" oninput="autoGrow(this)" onkeydown="handleKeyDown(event)"></textarea>
+          <button class="mic-btn" id="micBtn" onclick="alert('Voice dictation active')" title="Voice Dictation">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
-          <!-- Animated Blue Voice Mode Button -->
           <button class="blue-voice-btn" id="voiceBtn" onclick="openVoiceMode()" title="Live Voice Mode">
             <div class="voice-bars">
               <span class="v-bar"></span><span class="v-bar"></span><span class="v-bar"></span>
             </div>
           </button>
-          <!-- Send Arrow Button (appears when typing) -->
           <button class="send-arrow-btn" id="sendBtn" onclick="submitMessage()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
           </button>
@@ -302,7 +351,7 @@
 <!-- ── LIVE VOICE MODE OVERLAY ── -->
 <div class="voice-overlay" id="voiceOverlay">
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#8e8ea0;">Vektra Voice Engine · Live</span>
+    <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#8e8ea0;">Vektra Voice Mode · Live</span>
     <button onclick="closeVoiceMode()" style="width:36px;height:36px;border-radius:50%;background:#212121;border:none;color:#fff;cursor:pointer;">✕</button>
   </div>
   <div class="voice-orb"></div>
@@ -314,12 +363,25 @@
 <script>
   const API_ENDPOINT = 'https://vektrastudio-bot.onrender.com';
   const chatInput = document.getElementById('chatInput');
+  const dockInner = document.getElementById('dockInner');
   const sendBtn = document.getElementById('sendBtn');
   const micBtn = document.getElementById('micBtn');
   const voiceBtn = document.getElementById('voiceBtn');
   const messagesList = document.getElementById('messagesList');
   const chatScroller = document.getElementById('chatScroller');
+  const sbHistoryList = document.getElementById('sbHistoryList');
   let isGenerating = false;
+  let dynamicHistory = [];
+
+  function handleFocus() {
+    dockInner.classList.add('expanded');
+  }
+
+  function handleBlur() {
+    if (!chatInput.value.trim()) {
+      dockInner.classList.remove('expanded');
+    }
+  }
 
   chatInput.addEventListener('input', () => {
     const hasText = chatInput.value.trim().length > 0;
@@ -338,6 +400,14 @@
       e.preventDefault();
       submitMessage();
     }
+  }
+
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    localStorage.setItem('vektra_theme', isLight ? 'light' : 'dark');
+  }
+  if (localStorage.getItem('vektra_theme') === 'light') {
+    document.body.classList.add('light');
   }
 
   function openSidebar() {
@@ -359,19 +429,33 @@
     closeSidebar();
   }
 
+  function addHistoryItem(title) {
+    if (dynamicHistory.length === 0) {
+      sbHistoryList.innerHTML = '';
+    }
+    dynamicHistory.unshift(title);
+    const item = document.createElement('div');
+    item.className = 'history-link';
+    item.innerText = title;
+    item.onclick = closeSidebar;
+    sbHistoryList.prepend(item);
+  }
+
   function renderMD(text) {
-    let out = text
+    return text
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, '<div class="code-card"><div class="code-top"><span>$1</span></div><pre class="code-body"><code>$2</code></pre></div>')
-      .replace(/^### (.*$)/gim, '<h4 style="font-size:15px;margin:10px 0 4px;">$1</h4>')
+      .replace(/^### (.*$)/gim, '<h4 style="font-size:15px;margin:8px 0 4px;">$1</h4>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>');
-    return out;
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 5px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>');
   }
 
   async function submitMessage(overrideText) {
     const text = overrideText || chatInput.value.trim();
     if (!text || isGenerating) return;
+
+    if (messagesList.children.length === 0) {
+      addHistoryItem(text.length > 28 ? text.slice(0, 28) + '...' : text);
+    }
 
     chatInput.value = '';
     chatInput.style.height = 'auto';
@@ -380,7 +464,7 @@
     voiceBtn.style.display = 'flex';
     document.getElementById('welcomeStarters').style.display = 'none';
 
-    // Append User Message
+    // User Message
     const userRow = document.createElement('div');
     userRow.className = 'msg-row user';
     userRow.innerHTML = `<div class="user-bubble">${text}</div>`;
@@ -389,13 +473,7 @@
     // Bot Response Container
     const botRow = document.createElement('div');
     botRow.className = 'msg-row bot';
-    botRow.innerHTML = `
-      <div class="bot-header">
-        <div class="bot-logo-sq"><img src="data:image/png;base64,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" alt="Vektra"/></div>
-        <span style="font-size:12px;font-weight:600;color:#8e8ea0;">Vektra</span>
-      </div>
-      <div class="bot-content" id="botContent"><span class="cursor-blink"></span></div>
-    `;
+    botRow.innerHTML = `<div class="bot-content" id="botContent"><span class="cursor-blink"></span></div>`;
     messagesList.appendChild(botRow);
     chatScroller.scrollTop = chatScroller.scrollHeight;
     isGenerating = true;
@@ -409,8 +487,21 @@
       const data = await res.json();
       typewrite(data.reply || 'Response complete.', botRow.querySelector('#botContent'));
     } catch (_) {
-      typewrite(`I received: **"${text}"**.\n\n- **UI Design**: Modeled directly on ChatGPT's mobile structure with pitch black canvas, circular top navigation, and bottom prompt starters.\n- **Render Status**: The backend server is currently spinning up from sleep mode; offline processing is responsive.`, botRow.querySelector('#botContent'));
+      typewrite(`I received: **"${text}"**.\n\n- The sidebar now says **Vektra**.\n- Chat history is dynamic and only created as you message.\n- Left edge is pure solid black with zero gray bleeding.`, botRow.querySelector('#botContent'));
     }
+  }
+
+  function scrollToBottom(forceInstant = false) {
+    requestAnimationFrame(() => {
+      chatScroller.scrollTop = chatScroller.scrollHeight;
+      if (messagesList.lastElementChild) {
+        messagesList.lastElementChild.scrollIntoView({
+          behavior: forceInstant ? 'auto' : 'smooth',
+          block: 'end'
+        });
+      }
+      chatScroller.scrollTop = chatScroller.scrollHeight;
+    });
   }
 
   function typewrite(fullText, container) {
@@ -421,20 +512,17 @@
         clearInterval(interval);
         container.innerHTML = renderMD(fullText);
         isGenerating = false;
+        scrollToBottom(true);
       } else {
         container.innerHTML = renderMD(fullText.slice(0, i)) + '<span class="cursor-blink"></span>';
+        chatScroller.scrollTop = chatScroller.scrollHeight;
       }
-      chatScroller.scrollTop = chatScroller.scrollHeight;
-    }, 22);
+    }, 20);
   }
 
   function handleFileSelected(e) {
     const file = e.target.files[0];
     if (file) submitMessage(`[Attached image: ${file.name}] Please inspect.`);
-  }
-
-  function toggleDictation() {
-    alert('Voice dictation active.');
   }
 </script>
 </body>
